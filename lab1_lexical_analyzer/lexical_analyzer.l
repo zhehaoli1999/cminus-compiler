@@ -7,9 +7,9 @@
 #include <sys/stat.h>
 #include <dirent.h>
 int files_count = 0;
-int lines;
-int pos_start;
-int pos_end;
+int lines = 0;
+int pos_start = 1;
+int pos_end = 1;
 
 enum cminus_token_type{
 	ERROR = 258,
@@ -54,6 +54,42 @@ enum cminus_token_type{
 
  /****请在此补全所有flex的模式与动作  start******/
 
+letter 		[a-zA-Z]
+digit		[0-9]
+identifier	letter letter*
+number		digit digit*
+arrary		identifier'['number']'
+
+{identifier} 	{return IDENTIFIER;} 		
+number			{return NUMBER;}
+if			 	{return IF;}
+void			{return VOID;}
+while			{return WHILE;}
+return			{return RETURN;}
+if			 	{return IF;}
+else			{return ELSE;}
+[\t]+			{return BLANK;}
+{				{return LBRACE;}
+}				{return RBRACE;}
+(				{return LBRACKET;}
+)				{return LBRACKET;}
++				{return ADD;}
+-				{return SUB;}
+\*				{return MUL;}
+\\				{return DIV;}
+>=				{return GTE;}
+<=				{return LTE;}
+>				{return GT;}
+<				{return LT;}
+\n				{return }
+\/\*			{return COMMENT;}
+\*\/			{return ENDCOMMENT;}
+array			{return ARRAY;}
+
+
+
+
+
 . {return ERROR;}
 
 
@@ -80,6 +116,8 @@ void analyzer(char* input_file_name, char* output_file_name){
 	FILE *fp = fopen(output_path,"w+");
 	int token;
 	while(token = yylex()){
+		pos_start = pos_end + 1;
+		pos_end += strlen(yytext);
 		switch(token){
 			case ERROR:
 				fprintf(fp, "[ERR]: unable to analysize %s at %d line, from %d to %d\n", yytext, lines, pos_start, pos_end);
@@ -102,7 +140,24 @@ void analyzer(char* input_file_name, char* output_file_name){
 /// under 'testcase' directory, there could be many *.cminus files.
 /// \todo student should fill this function
 void getAllTestcase(char filename[][256]){
+    DIR * dir;
+    struct dirent *ent;
+    int count = 0;
+    if ((dir = opendir ("/Users/jasmine/CLionProjects/foo/testcases/")) != nullptr) {
+        while((ent = readdir(dir)) != nullptr && strlen(ent->d_name) > 0){
+            string tmp = ent->d_name;
+            if(tmp[0]  == '.')
+                continue;
+            strcpy(filename[files_count++], tmp.substr(0, tmp.rfind('.')).c_str());
+            // printf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
+        }
+        closedir(dir);
+    } else{
+        // printf("open file failed !");
+        return exit(1);
+    }
 }
+
 
 /// \brief process all *.cminus file
 ///
@@ -113,10 +168,12 @@ void getAllTestcase(char filename[][256]){
 int main(int argc, char **argv){
 	char filename[10][256];
 	char output_file_name[256];
+	char input_file_name[256];
 	char suffix[] = ".tokens";
 	getAllTestcase(filename);
 	for(int i = 0; i < files_count; i++){
-
+			strcpy(input_file_name, filename[i]+'.cminus')
+			strcpy(output_file_name, filename[i]+'.token')
 			analyzer(filename[i],output_file_name);
 	}
 	return 0;
