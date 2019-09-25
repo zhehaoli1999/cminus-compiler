@@ -1,14 +1,11 @@
 %option noyywrap
 %{
 /*****************声明和选项设置  begin*****************/
-#include <string>
-#include <iostream>
 #include <string.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-using namespace std;
 int files_count = 0;
 int lines = 1;
 int pos_start = 0;
@@ -68,6 +65,7 @@ number		{digit}{digit}*
 %%	
 	
 {number}		{return NUMBER;}
+int				{return INT;}
 if			 	{return IF;}
 void			{return VOID;}
 while			{return WHILE;}
@@ -76,8 +74,10 @@ else			{return ELSE;}
 [\t]			{return BLANK;}
 "{"				{return LBRACE;}
 "}"				{return RBRACE;}
-"("				{return LBRACKET;}
-")"				{return LBRACKET;}
+"("				{return LPARENTHESE;}
+")"				{return RPARENTHESE;}
+"["				{return LBRACKET;}
+"]"				{return RBRACKET;}
 "+"				{return ADD;}
 "-"				{return SUB;}
 "*"				{return MUL;}
@@ -88,7 +88,6 @@ else			{return ELSE;}
 ">"				{return GT;}
 "<"				{return LT;}
 ","				{return COMMA;}
-{identifier} 	{return IDENTIFIER;} 
 " "				{return BLANK;}
 \/\*			{return COMMENT;}
 \n				{return NEWLINE;}
@@ -96,6 +95,8 @@ else			{return ELSE;}
 ";"				{return SEMICOLON;}
 "!="			{return NEQ;}
 "="				{return ASSIN;}
+{identifier}\[{number}\]+ {return ARRAY;}
+{identifier} 	{return IDENTIFIER;} 
 
 
 . 				{return ERROR;}
@@ -110,33 +111,30 @@ else			{return ELSE;}
 /// \param output_file_name
 /// \todo student should fill this function
 void analyzer(char* input_file_name, char* output_file_name){
-	/*
+	/// compute file's name
 	char input_path[256] = "./testcase/";
-	char cminus[256] = ".cminus";
-	char token[256] = ".token";
-	strcat(input_path, input_file_name);
-	strcat(input_path, cminus);
 	char output_path[256] = "./tokens/";
-	strcat(output_path, output_file_name);
-	strcat(output_path, token);
-	*/
-	FILE *file;
-	string input_file_name1 = input_file_name;
-	string output_file_name1 = output_file_name;
-	string input_path1 = "./testcase/" + input_file_name1 + ".cminus";
-	string output_path1 = "./tokens/" + output_file_name1 + ".token";
-	if(!(yyin = fopen(input_path1.c_str(),"r"))){
+	char cminus[256] = ".cminus";
+	char token_str[256] = ".tokens";
+	char name[256];
+	strcat(input_path, input_file_name);
+	char *p = strstr(input_file_name, ".");
+	strncpy(name, output_file_name, p - output_file_name);
+	strcat(output_path, name);
+	strcat(output_path, token_str);
+	
+	if(!(yyin = fopen(input_path,"r"))){
 		printf("[ERR] No input file\n");
 		exit(1);
 	}
-	printf("[START]: Read from: %s\n", input_path1.c_str());
-	FILE *fp = fopen(output_path1.c_str(),"w+");
+	printf("[START]: Read from: %s\n", input_path);
+	FILE *fp = fopen(output_path,"w+");
 	if(fp == NULL){
 		printf("[ERR] No output file\n");
 		exit(1);
 	}
 	int token;
-	bool flag = 0;
+	int flag = 0;
 	while(token = yylex()){
 		if(flag == 0){
 			switch(token){
@@ -158,7 +156,7 @@ void analyzer(char* input_file_name, char* output_file_name){
 				break;
 			default :
 				pos_start = pos_end;
-				pos_end += strlen(Nyytext);
+				pos_end += strlen(yytext);
 				fprintf(fp, "%s\t%d\t%d\t%d\t%d\n",yytext, token, lines, pos_start, pos_end);
 		}
 		} else if(flag == 1){
@@ -175,24 +173,23 @@ void analyzer(char* input_file_name, char* output_file_name){
 
 /// \brief get all file paths under 'testcase' directory
 ///
-/// under 'testcase' directory, there could be many *.cminus files.
+/// under 'testcase' directory, there could be *.cminus files.
 /// \todo student should fill this function
 void getAllTestcase(char filename[][256]){
     DIR *dir;
 	// dir = (DIR*)malloc(sizeof(DIR));
-    dirent *ent;
+    struct dirent *ent;
 	//len = offsetof(struct dirent, d_name) + pathconf("/home/jasmine/Documents/lab1/lab1_lexical_analyzer/testcase", _PC_NAME_MAX) + 1;
   	//ent = malloc(len);
     int count = 0;
-	string tmp;
     if ((dir = opendir ("./testcase/")) != NULL) {
         while((ent = readdir(dir)) != NULL && strlen(ent->d_name) > 0){
-            tmp = ent->d_name;
-            if(tmp[0]  == '.'){
+            //tmp = ent->d_name;
+            if(ent->d_name[0]  == '.'){
 				continue;
 			}
 			
-            strcpy(filename[files_count++], tmp.substr(0, tmp.rfind('.')).c_str());
+            strcpy(filename[files_count++], ent->d_name);
             //printf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
         }
         closedir(dir);
