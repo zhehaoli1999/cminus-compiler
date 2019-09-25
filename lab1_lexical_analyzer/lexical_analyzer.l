@@ -54,13 +54,13 @@ enum cminus_token_type{
 
  /****请在此补全所有flex的模式与动作  start******/
 
-letter 		[a-zA-Z]
+LETTER 		[a-zA-Z]
 digit		[0-9]
-identifier	letter letter*
+IDENTIFIER	LETTER LETTER*
 number		digit digit*
 arrary		identifier'['number']'
 
-{identifier} 	{return IDENTIFIER;} 		
+{IDENTIFIER} 	{return IDENTIFIER;} 		
 number			{return NUMBER;}
 if			 	{return IF;}
 void			{return VOID;}
@@ -68,7 +68,6 @@ while			{return WHILE;}
 return			{return RETURN;}
 if			 	{return IF;}
 else			{return ELSE;}
-[\t]+			{return BLANK;}
 {				{return LBRACE;}
 }				{return RBRACE;}
 (				{return LBRACKET;}
@@ -85,6 +84,9 @@ else			{return ELSE;}
 \/\*			{return COMMENT;}
 \*\/			{return ENDCOMMENT;}
 array			{return ARRAY;}
+[\t]+			{return BLANK;}
+[\n]+			{return ENTER;}
+\\ todo 
 
 
 
