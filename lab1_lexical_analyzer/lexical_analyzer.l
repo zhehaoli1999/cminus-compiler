@@ -10,8 +10,8 @@
 #include <dirent.h>
 using namespace std;
 int files_count = 0;
-int lines = 0;
-int pos_start = 1;
+int lines = 1;
+int pos_start = 0;
 int pos_end = 1;
 
 enum cminus_token_type{
@@ -48,7 +48,9 @@ enum cminus_token_type{
 	EOL = 288,
 	COMMENT = 289,
 	BLANK = 290,
-	ENTER = -1
+	NEWLINE = -1,
+	UNCOMMENT = -2
+
 };
 /*****************end*****************/
 
@@ -71,7 +73,7 @@ void			{return VOID;}
 while			{return WHILE;}
 return			{return RETURN;}
 else			{return ELSE;}
-[\t]+			{return BLANK;}
+[\t]			{return BLANK;}
 "{"				{return LBRACE;}
 "}"				{return RBRACE;}
 "("				{return LBRACKET;}
@@ -82,18 +84,21 @@ else			{return ELSE;}
 "/"				{return DIV;}
 ">="			{return GTE;}
 "<="			{return LTE;}
+"=="			{return EQ;}
 ">"				{return GT;}
 "<"				{return LT;}
-{identifier} 	{return IDENTIFIER;} 	
+","				{return COMMA;}
+{identifier} 	{return IDENTIFIER;} 
+" "				{return BLANK;}
+\/\*			{return COMMENT;}
+\n				{return NEWLINE;}
+\*\/			{return UNCOMMENT;}
+";"				{return SEMICOLON;}
+"!="			{return NEQ;}
+"="				{return ASSIN;}
 
 
-
-
-
-
-. {return ERROR;}
-
-
+. 				{return ERROR;}
  /****  end******/
 %%
 
@@ -118,36 +123,51 @@ void analyzer(char* input_file_name, char* output_file_name){
 	FILE *file;
 	string input_file_name1 = input_file_name;
 	string output_file_name1 = output_file_name;
-	string input_path1 = "/home/jasmine/Documents/lab1/lab1_lexical_analyzer/testcase/" + input_file_name1 + ".cminus";
-	string output_path1 = "/home/jasmine/Documents/lab1/lab1_lexical_analyzer/token/" + output_file_name1 + ".token";
-	if(!(file = fopen(input_path1.c_str(),"r"))){
+	string input_path1 = "./testcase/" + input_file_name1 + ".cminus";
+	string output_path1 = "./tokens/" + output_file_name1 + ".token";
+	if(!(yyin = fopen(input_path1.c_str(),"r"))){
 		printf("[ERR] No input file\n");
 		exit(1);
 	}
 	printf("[START]: Read from: %s\n", input_path1.c_str());
 	FILE *fp = fopen(output_path1.c_str(),"w+");
-	if(!fp){
-		cout<<output_path1<<endl;
+	if(fp == NULL){
 		printf("[ERR] No output file\n");
 		exit(1);
 	}
 	int token;
+	bool flag = 0;
 	while(token = yylex()){
-		pos_start = pos_end + 1;
-		pos_end += strlen(yytext);
-		cout<<token<<endl;
-		switch(token){
+		if(flag == 0){
+			switch(token){
 			case ERROR:
 				fprintf(fp, "[ERR]: unable to analysize %s at %d line, from %d to %d\n", yytext, lines, pos_start, pos_end);
 				break;
 			case COMMENT:
+				flag = 1;
+				break;
+			case NEWLINE:
+				lines++;
+				pos_start = 0; pos_end = 1;
+				break;
 			case BLANK:
+				pos_end++;
+				//fprintf(fp, "%s\t%d\t%d\t%d\t%d\n",yytext, token, lines, pos_start, pos_end);
 				break;
 			case EOL:
 				break;
 			default :
+				pos_start = pos_end;
+				pos_end += strlen(Nyytext);
 				fprintf(fp, "%s\t%d\t%d\t%d\t%d\n",yytext, token, lines, pos_start, pos_end);
 		}
+		} else if(flag == 1){
+			if(token == UNCOMMENT){
+				flag = 0;
+			}
+		}
+		
+		
 	}
 	fclose(fp);
 	printf("[END]: Analysis completed.\n");
@@ -165,7 +185,7 @@ void getAllTestcase(char filename[][256]){
   	//ent = malloc(len);
     int count = 0;
 	string tmp;
-    if ((dir = opendir ("/home/jasmine/Documents/lab1/lab1_lexical_analyzer/testcase/")) != NULL) {
+    if ((dir = opendir ("./testcase/")) != NULL) {
         while((ent = readdir(dir)) != NULL && strlen(ent->d_name) > 0){
             tmp = ent->d_name;
             if(tmp[0]  == '.'){
@@ -173,7 +193,7 @@ void getAllTestcase(char filename[][256]){
 			}
 			
             strcpy(filename[files_count++], tmp.substr(0, tmp.rfind('.')).c_str());
-            //rintf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
+            //printf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
         }
         closedir(dir);
 		//free(ent);
@@ -199,6 +219,9 @@ int main(int argc, char **argv){
 	for(int i = 0; i < files_count; i++){
 			//strcat(output_file_name, filename[i]);
 			//strcat(output_file_name, '.token');
+			pos_end = 1;
+			pos_start = 0;
+			lines = 1;
 			analyzer(filename[i],filename[i]);
 	}
 	return 0;
