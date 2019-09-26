@@ -95,7 +95,7 @@ else			{return ELSE;}
 ";"				{return SEMICOLON;}
 "!="			{return NEQ;}
 "="				{return ASSIN;}
-{identifier}\[{number}\]+ {return ARRAY;}
+{identifier}\[{number}*\]+ {return ARRAY;}
 {identifier} 	{return IDENTIFIER;} 
 
 
