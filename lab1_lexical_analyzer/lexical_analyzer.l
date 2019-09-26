@@ -95,7 +95,7 @@ else			{return ELSE;}
 ";"				{return SEMICOLON;}
 "!="			{return NEQ;}
 "="				{return ASSIN;}
-{identifier}\[{number}*\]+ {return ARRAY;}
+\[\]			{return ARRAY;}
 {identifier} 	{return IDENTIFIER;} 
 
 
@@ -120,8 +120,10 @@ void analyzer(char* input_file_name, char* output_file_name){
 	strcat(input_path, input_file_name);
 	char *p = strstr(input_file_name, ".");
 	strncpy(name, output_file_name, p - output_file_name);
+	name[p - output_file_name] = '\0';
 	strcat(output_path, name);
 	strcat(output_path, token_str);
+	
 	
 	if(!(yyin = fopen(input_path,"r"))){
 		printf("[ERR] No input file\n");
@@ -136,6 +138,8 @@ void analyzer(char* input_file_name, char* output_file_name){
 	int token;
 	int flag = 0;
 	while(token = yylex()){
+		pos_start = pos_end;
+		pos_end += strlen(yytext);
 		if(flag == 0){
 			switch(token){
 			case ERROR:
@@ -149,24 +153,26 @@ void analyzer(char* input_file_name, char* output_file_name){
 				pos_start = 0; pos_end = 1;
 				break;
 			case BLANK:
-				pos_end++;
 				//fprintf(fp, "%s\t%d\t%d\t%d\t%d\n",yytext, token, lines, pos_start, pos_end);
 				break;
 			case EOL:
 				break;
 			default :
-				pos_start = pos_end;
-				pos_end += strlen(yytext);
 				fprintf(fp, "%s\t%d\t%d\t%d\t%d\n",yytext, token, lines, pos_start, pos_end);
 		}
 		} else if(flag == 1){
 			if(token == UNCOMMENT){
 				flag = 0;
+				continue;
+			} else if (token == NEWLINE){
+				pos_start = 0; pos_end = 1;
+				lines++;
 			}
 		}
-		
-		
 	}
+		
+		
+	
 	fclose(fp);
 	printf("[END]: Analysis completed.\n");
 }
@@ -188,7 +194,6 @@ void getAllTestcase(char filename[][256]){
             if(ent->d_name[0]  == '.'){
 				continue;
 			}
-			
             strcpy(filename[files_count++], ent->d_name);
             //printf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
         }
