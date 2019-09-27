@@ -51,28 +51,32 @@
 
 ## Testing
 
-Besides testcase in the `testcase\`, I consider additional cases as follow.
+Besides testcases in the `testcase\`, I consider additional cases as follow.
 
 1. Multiple line comments
-```cpp
-/*
-comments
-comments
-comments
-*/
+    ```cpp
+    /*
+    comments
+    comments
+    comments
+    */
 
-/*comment1*/
-statement
-/*comment2*/
+    /*comment1*/
+    statement
+    /*comment2*/
 
-/*comments*/statement
-```
+    /*comments*/statement
+    ```
 
-In the program, I utilize a variable `flag` in the `analyzer` function to denote whether the analyzer is reading comments. When it first meets `\*`, the flag will be set to `true`. When it meets the end `*/`, the flag will be set to `false`.
+    In the program, I utilize a variable `flag` in the `analyzer` function to denote whether the analyzer is reading comments. When it first meets `\*`, the flag will be set to `true`. When it meets the end `*/`, the flag will be set to `false`.
 
-There might be other solutions which better utlize `flex` properties, such as [answers](https://stackoverflow.com/questions/20879643/error-unrecognized-rule-in-flex-tool/20885305) in stackoverflow
+    There might be other solutions which better utlize `flex` properties, such as [answers](https://stackoverflow.com/questions/20879643/error-unrecognized-rule-in-flex-tool/20885305) in stackoverflow
+
+
 2. Arrary  
-There has been multiple forms of arrays, i.e. `A[number]`, `A[]`
+    There has been multiple forms of arrays, i.e. `A[]`.
+
+    Note that `A[number]` should be interpreted as Array.
 
 
 ## Debugging
