@@ -16,7 +16,7 @@
 // external functions from lex
 extern int yylex();
 extern int yyparse();
-extern int yyrestart(FILE *);
+extern int yyrestart();
 extern FILE * yyin;
 extern int yydebug;
 yydebug = 1;
