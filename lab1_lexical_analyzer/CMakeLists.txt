@@ -5,8 +5,8 @@ add_library(lex STATIC
 	lexical_analyzer.c
 	${FLEX_lex_OUTPUTS}
 )
-target_link_libraries(lex common)
+target_link_libraries(lex common syntax_tree)
 
 add_executable(test_lex test_lex.c ${FLEX_lex_OUTPUTS})
 target_compile_definitions(test_lex PUBLIC LAB1_ONLY)
-target_link_libraries(test_lex common)
+target_link_libraries(test_lex common syntax_tree)

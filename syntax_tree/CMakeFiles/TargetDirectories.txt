@@ -1,0 +1,4 @@
+/home/jasmine/lab/compiler/compiler_cminus/syntax_tree/CMakeFiles/rebuild_cache.dir
+/home/jasmine/lab/compiler/compiler_cminus/syntax_tree/CMakeFiles/edit_cache.dir
+/home/jasmine/lab/compiler/compiler_cminus/syntax_tree/CMakeFiles/test_syntree.dir
+/home/jasmine/lab/compiler/compiler_cminus/syntax_tree/CMakeFiles/syntax_tree.dir

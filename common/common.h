@@ -10,6 +10,8 @@
 /// under 'testcase' directory, there could be many *.cminus files.
 /// \param filename array of output file names
 /// \return length of filename[][]
+extern int pos_start;
+extern int pos_end;
 int getAllTestcase(char filename[][256]);
 
 #endif /* common/common.h */

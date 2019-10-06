@@ -7,6 +7,7 @@
 #include "lab1_lexical_analyzer/lexical_analyzer.h"
 #include "common/common.h"
 
+#include "syntax_tree/SyntaxTree.h"
 #ifndef LAB1_ONLY
 #include "syntax_analyzer.h"
 #endif
@@ -30,7 +31,43 @@ identifierPattern [a-zA-Z][a-zA-Z]*
  /******************TODO*********************/
  /****请在此补全所有flex的模式与动作  start******/
 
-. {return ERROR;}
+
+	
+{numberPattern}		{yylval.tn = newSyntaxTreeNode("NUMBER"); return NUMBER;}
+{commentPattern} {yylval.tn = newSyntaxTreeNode("COMMENT"); return COMMENT;}
+int				{yylval.tn = newSyntaxTreeNode("INT"); return INT;}
+if			 	{yylval.tn = newSyntaxTreeNode("IF"); return IF;}
+void			{yylval.tn = newSyntaxTreeNode("VOID"); return VOID;}
+while			{yylval.tn = newSyntaxTreeNode("WHILE"); return WHILE;}
+return			{yylval.tn = newSyntaxTreeNode("RETURN"); return RETURN;}
+else			{yylval.tn = newSyntaxTreeNode("ELSE"); return ELSE;}
+[\t]			{}
+"{"				{yylval.tn = newSyntaxTreeNode("LBRACE"); return LBRACE;}
+"}"				{yylval.tn = newSyntaxTreeNode("RBRACE"); return RBRACE;}
+"("				{yylval.tn = newSyntaxTreeNode("LPARENTHESE"); return LPARENTHESE;}
+")"				{yylval.tn = newSyntaxTreeNode("RPARENTHESE"); return RPARENTHESE;}
+"["				{yylval.tn = newSyntaxTreeNode("LBRACKET"); return LBRACKET;}
+"]"				{yylval.tn = newSyntaxTreeNode("RBRACKET"); return RBRACKET;}
+"+"				{yylval.tn = newSyntaxTreeNode("ADD"); return ADD;}
+"-"				{yylval.tn = newSyntaxTreeNode("SUB"); return SUB;}
+"*"				{yylval.tn = newSyntaxTreeNode("MUL"); return MUL;}
+"/"				{yylval.tn = newSyntaxTreeNode("DIV"); return DIV;}
+">="			{yylval.tn = newSyntaxTreeNode("GTE"); return GTE;}
+"<="			{yylval.tn = newSyntaxTreeNode("LTE"); return LTE;}
+"=="			{yylval.tn = newSyntaxTreeNode("EQ"); return EQ;}
+">"				{yylval.tn = newSyntaxTreeNode("GT"); return GT;}
+"<"				{yylval.tn = newSyntaxTreeNode("LT"); return LT;}
+","				{yylval.tn = newSyntaxTreeNode("COMMA"); return COMMA;}
+" "				{}
+\n				{}
+";"				{yylval.tn = newSyntaxTreeNode("SEMICOLON"); return SEMICOLON;}
+"!="			{yylval.tn = newSyntaxTreeNode("NEQ"); return NEQ;}
+"="				{yylval.tn = newSyntaxTreeNode("ASSIN"); return ASSIN;}
+\[\]			{yylval.tn = newSyntaxTreeNode("ARRAY"); return ARRAY;}
+{identifierPattern} 	{yylval.tn = newSyntaxTreeNode("IDENTIFIER"); return IDENTIFIER;} 
+
+
+. 				{return ERROR;}
 
 
 
