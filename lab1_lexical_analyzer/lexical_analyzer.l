@@ -22,6 +22,8 @@ int pos_end;
 %}
 
 commentPattern "/*"([^\*]|(\*)*[^\*/])*(\*)*"*/"
+digitPattern [0-9]
+numberPattern (0|[1-9]{digitPattern}*)
 identifierPattern [a-zA-Z][a-zA-Z]*
 
 %%
@@ -31,39 +33,44 @@ identifierPattern [a-zA-Z][a-zA-Z]*
 
 
 	
-{numberPattern}		{yylval.tn = newSyntaxTreeNode("NUMBER"); return NUMBER;}
-{commentPattern} {yylval.tn = newSyntaxTreeNode("COMMENT"); return COMMENT;}
-int				{yylval.tn = newSyntaxTreeNode("INT"); return INT;}
-if			 	{yylval.tn = newSyntaxTreeNode("IF"); return IF;}
-void			{yylval.tn = newSyntaxTreeNode("VOID"); return VOID;}
-while			{yylval.tn = newSyntaxTreeNode("WHILE"); return WHILE;}
-return			{yylval.tn = newSyntaxTreeNode("RETURN"); return RETURN;}
-else			{yylval.tn = newSyntaxTreeNode("ELSE"); return ELSE;}
+{numberPattern}		{ return NUMBER;}
+{commentPattern} {}
+int				{ return INT;}
+if			 	{ return IF;}
+void			{ return VOID;}
+while			{ return WHILE;}
+return			{ return RETURN;}
+else			{ return ELSE;}
 [\t]			{}
-"{"				{yylval.tn = newSyntaxTreeNode("LBRACE"); return LBRACE;}
-"}"				{yylval.tn = newSyntaxTreeNode("RBRACE"); return RBRACE;}
-"("				{yylval.tn = newSyntaxTreeNode("LPARENTHESE"); return LPARENTHESE;}
-")"				{yylval.tn = newSyntaxTreeNode("RPARENTHESE"); return RPARENTHESE;}
-"["				{yylval.tn = newSyntaxTreeNode("LBRACKET"); return LBRACKET;}
-"]"				{yylval.tn = newSyntaxTreeNode("RBRACKET"); return RBRACKET;}
-"+"				{yylval.tn = newSyntaxTreeNode("ADD"); return ADD;}
-"-"				{yylval.tn = newSyntaxTreeNode("SUB"); return SUB;}
-"*"				{yylval.tn = newSyntaxTreeNode("MUL"); return MUL;}
-"/"				{yylval.tn = newSyntaxTreeNode("DIV"); return DIV;}
-">="			{yylval.tn = newSyntaxTreeNode("GTE"); return GTE;}
-"<="			{yylval.tn = newSyntaxTreeNode("LTE"); return LTE;}
-"=="			{yylval.tn = newSyntaxTreeNode("EQ"); return EQ;}
-">"				{yylval.tn = newSyntaxTreeNode("GT"); return GT;}
-"<"				{yylval.tn = newSyntaxTreeNode("LT"); return LT;}
-","				{yylval.tn = newSyntaxTreeNode("COMMA"); return COMMA;}
+"{"				{ return LBRACE;}
+"}"				{ return RBRACE;}
+"("				{ return LPARENTHESE;}
+")"				{ return RPARENTHESE;}
+"["				{ return LBRACKET;}
+"]"				{ return RBRACKET;}
+"+"				{ return ADD;}
+"-"				{ return SUB;}
+"*"				{ return MUL;}
+"/"				{ return DIV;}
+">="			{ return GTE;}
+"<="			{ return LTE;}
+"=="			{ return EQ;}
+">"				{ return GT;}
+"<"				{ return LT;}
+","				{ return COMMA;}
 " "				{}
 \n				{}
-";"				{yylval.tn = newSyntaxTreeNode("SEMICOLON"); return SEMICOLON;}
-"!="			{yylval.tn = newSyntaxTreeNode("NEQ"); return NEQ;}
-"="				{yylval.tn = newSyntaxTreeNode("ASSIN"); return ASSIN;}
-\[\]			{yylval.tn = newSyntaxTreeNode("ARRAY"); return ARRAY;}
-{identifierPattern} 	{yylval.tn = newSyntaxTreeNode("IDENTIFIER"); return IDENTIFIER;} 
-
+";"				{ return SEMICOLON;}
+"!="			{ return NEQ;}
+"="				{ return ASSIN;}
+\[\]			{ return ARRAY;}
+{identifierPattern} 	{ 
+	#ifndef LAB1_ONLY
+	// printf("yytext: %s\n", yytext);
+	// yylval.name = newSyntaxTreeNode(yytext);
+	strcpy(yylval.name, yytext);
+	#endif
+	return IDENTIFIER;} 
 
 . 				{return ERROR;}
 
