@@ -12,7 +12,7 @@ int getAllTestcase(char filename[][256]){
 	//len = offsetof(struct dirent, d_name) + pathconf("./testcase/", _PC_NAME_MAX) + 1;
   	//ent = malloc(len);
     int files_count = 0;
-    if ((dir = opendir ("/home/jasmine/lab/compiler/compiler_cminus/testcase/")) != NULL) {
+    if ((dir = opendir ("../testcase/")) != NULL) {
         while((ent = readdir(dir)) != NULL && strlen(ent->d_name) > 0){
             //tmp = ent->d_name;
             if(ent->d_name[0]  == '.'){
