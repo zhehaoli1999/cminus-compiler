@@ -7,5 +7,5 @@ fi
 mkdir build && cd build
 cmake ..
 cd ../
-make -C build/ && cd build
-./test_syntax
+make -C build/ 
+./build/test_syntax

@@ -38,6 +38,8 @@ void yyerror(const char * s);
 /********** TODO: Fill in this union structure *********/
 }%error-verbose
 
+%locations
+
 /********** TODO: Your token definition here ***********/
 %token<tn> ERROR
 %token<tn>	ADD 
@@ -118,7 +120,6 @@ void yyerror(const char * s);
 program: declaration-list{
     $$ = newSyntaxTreeNode("program");
     SyntaxTreeNode_AddChild($$, $1);
-    printf("constructing tree initially\n");
     gt->root = $$;
     }
     ;
@@ -515,7 +516,7 @@ void yyerror(const char * s)
 {
 	// TODO: variables in Lab1 updates only in analyze() function in lexical_analyzer.l
 	//       You need to move position updates to show error output below
-	fprintf(stderr, "%s:%d syntax error for %s\n", s, lines, yytext);
+	fprintf(stderr, "%s:%d syntax error for %s\n in %d", s, lines, yytext, yylloc.first_column);
 
 }
 
@@ -528,8 +529,8 @@ void syntax(const char * input, const char * output)
 {
 	gt = newSyntaxTree();
 
-	char inputpath[256] = "../testcase/";
-	char outputpath[256] = "../syntree/";
+	char inputpath[256] = "./testcase/";
+	char outputpath[256] = "./syntree/";
 	strcat(inputpath, input);
 	strcat(outputpath, output);
 	
