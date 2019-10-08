@@ -38,6 +38,8 @@ void yyerror(const char * s);
 /********** TODO: Fill in this union structure *********/
 }%error-verbose
 
+%locations
+
 /********** TODO: Your token definition here ***********/
 %token<tn> ERROR
 %token<tn>	ADD 
@@ -515,7 +517,7 @@ void yyerror(const char * s)
 {
 	// TODO: variables in Lab1 updates only in analyze() function in lexical_analyzer.l
 	//       You need to move position updates to show error output below
-	fprintf(stderr, "%s:%d syntax error for %s\n", s, lines, yytext);
+	fprintf(stderr, "%s:%d syntax error for %s\n in %d %d", s, lines, yytext, yylloc.first_column, yylloc.last_column);
 
 }
 
