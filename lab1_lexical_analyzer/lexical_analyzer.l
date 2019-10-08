@@ -40,7 +40,8 @@ identifierPattern [a-zA-Z][a-zA-Z]*
 	
 {numberPattern}		{ return NUMBER;}
 {commentPattern} {
-				#ifdef LAB1_ONLY
+
+	#ifdef LAB1_ONLY
 				return COMMENT;
 				#endif
 }
@@ -50,8 +51,8 @@ void			{ return VOID;}
 while			{ return WHILE;}
 return			{ return RETURN;}
 else			{ return ELSE;}
-[\t]			{ 
-				#ifdef LAB1_ONLY
+[\t]			{
+	#ifdef LAB1_ONLY
 				return BLANK;
 				#endif
 }
@@ -91,8 +92,7 @@ else			{ return ELSE;}
 	#ifndef LAB1_ONLY
 	strcpy(yylval.name, yytext);
 	#endif
-	return IDENTIFIER;
-	} 
+	return IDENTIFIER;} 
 
 . 				{return ERROR;}
 
