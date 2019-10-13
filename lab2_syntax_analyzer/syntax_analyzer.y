@@ -34,9 +34,11 @@ void yyerror(const char * s);
 %union {
     SyntaxTreeNode * tn;
     char name[100];
-    int val;
+    long val;
 /********** TODO: Fill in this union structure *********/
 }%error-verbose
+
+%locations
 
 /********** TODO: Your token definition here ***********/
 %token<tn> ERROR
@@ -66,7 +68,7 @@ void yyerror(const char * s);
 %token<tn>	VOID 
 %token<tn>	WHILE 
 %token<name>	IDENTIFIER
-%token<tn>	NUMBER 
+%token<val>	NUMBER 
 %token<tn>	ARRAY 
 %token<tn>	LETTER 
 %token<tn>	EOL 
@@ -105,6 +107,7 @@ void yyerror(const char * s);
 %type<tn> args
 %type<tn> arg-list
 %type<tn> ID
+%type<tn> NUM
 
 
 
@@ -118,7 +121,6 @@ void yyerror(const char * s);
 program: declaration-list{
     $$ = newSyntaxTreeNode("program");
     SyntaxTreeNode_AddChild($$, $1);
-    printf("constructing tree initially\n");
     gt->root = $$;
     }
     ;
@@ -148,11 +150,11 @@ var-declaration: type-specifier ID SEMICOLON  {
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
     }
-    | type-specifier ID LBRACKET NUMBER RBRACKET   {
+    | type-specifier ID LBRACKET NUM RBRACKET SEMICOLON  {
         $$ = newSyntaxTreeNode("var-declaration"); 
-        $3 = newSyntaxTreeNode("(");
-        $4 = newSyntaxTreeNode(yytext);
-        $5 = newSyntaxTreeNode(")");
+        $3 = newSyntaxTreeNode("[");
+        // $4 = newSyntaxTreeNode(yytext);
+        $5 = newSyntaxTreeNode("]");
         SyntaxTreeNode_AddChild($$, $1);
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
@@ -467,16 +469,15 @@ factor: LPARENTHESE expression RPARENTHESE {
         $$ = newSyntaxTreeNode("factor"); 
         SyntaxTreeNode_AddChild($$, $1);
         }
-    | NUMBER {
+    | NUM {
         $$ = newSyntaxTreeNode("factor"); 
-        $1 = newSyntaxTreeNode(yytext);
+        // $1 = newSyntaxTreeNode(yytext);
         SyntaxTreeNode_AddChild($$, $1);
     }
     ;
 call: ID LPARENTHESE args RPARENTHESE{
         $$ = newSyntaxTreeNode("call"); 
         // $1 = newSyntaxTreeNode(yytext);
-        printf("ID: %s", yytext);
         $2 = newSyntaxTreeNode("(");
         $4 = newSyntaxTreeNode(")");
         SyntaxTreeNode_AddChild($$, $1);
@@ -509,14 +510,18 @@ arg-list: arg-list COMMA expression {
 ID: IDENTIFIER {
     $$ = newSyntaxTreeNode($1);
 }
+
+NUM: NUMBER {
+    $$ = newSyntaxTreeNode($1);
+}
 %%
 
 void yyerror(const char * s)
 {
 	// TODO: variables in Lab1 updates only in analyze() function in lexical_analyzer.l
 	//       You need to move position updates to show error output below
-	fprintf(stderr, "%s:%d syntax error for %s\n", s, lines, yytext);
-
+	// fprintf(stderr, "%s:%d syntax error for %s\n", s, lines, yytext);
+    fprintf(stderr, "******%s:%d syntax error for %s in %d %d******\n", s, lines, yytext, yylloc.first_column, yylloc.last_column);
 }
 
 
@@ -528,8 +533,8 @@ void syntax(const char * input, const char * output)
 {
 	gt = newSyntaxTree();
 
-	char inputpath[256] = "../testcase/";
-	char outputpath[256] = "../syntree/";
+	char inputpath[256] = "./testcase/";
+	char outputpath[256] = "./syntree/";
 	strcat(inputpath, input);
 	strcat(outputpath, output);
 	
@@ -570,7 +575,7 @@ int syntax_main(int argc, char ** argv)
 	const char * suffix = ".syntax_tree";
 	int fn = getAllTestcase(filename);
 	for (int i = 0; i < fn; i++) {
-        printf("analyzing\n");
+        // printf("analyzing\n");
         int name_len = strstr(filename[i], ".cminus") - filename[i];
         strncpy(output_file_name, filename[i], name_len);
         strcpy(output_file_name+name_len, suffix);

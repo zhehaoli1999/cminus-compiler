@@ -10,10 +10,15 @@
 #include "syntax_tree/SyntaxTree.h"
 #ifndef LAB1_ONLY
 #include "syntax_analyzer.h"
+#define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno; \
+   yylloc.first_column = yycolumn; \
+   yylloc.last_column = yycolumn + yyleng; \
+   yycolumn += yyleng;
 #endif
 
+int yycolumn = 1;
 int files_count;
-int lines;
+int lines = 1;
 int pos_start;
 int pos_end;
 
@@ -33,15 +38,28 @@ identifierPattern [a-zA-Z][a-zA-Z]*
 
 
 	
-{numberPattern}		{ return NUMBER;}
-{commentPattern} {}
+{numberPattern}		{ 
+	#ifndef LAB1_ONLY
+	yylval.val = yytext;
+	#endif
+	return NUMBER;
+}
+{commentPattern} {
+				#ifdef LAB1_ONLY
+				return COMMENT;
+				#endif
+}
 int				{ return INT;}
 if			 	{ return IF;}
 void			{ return VOID;}
 while			{ return WHILE;}
 return			{ return RETURN;}
 else			{ return ELSE;}
-[\t]			{}
+[\t]			{ 
+				#ifdef LAB1_ONLY
+				return BLANK;
+				#endif
+}
 "{"				{ return LBRACE;}
 "}"				{ return RBRACE;}
 "("				{ return LPARENTHESE;}
@@ -58,19 +76,28 @@ else			{ return ELSE;}
 ">"				{ return GT;}
 "<"				{ return LT;}
 ","				{ return COMMA;}
-" "				{}
-\n				{}
+" "				{
+				#ifdef LAB1_ONLY
+				return BLANK;
+				#endif
+}
+\n				{yycolumn = 1;
+				lines++;
+				#ifdef LAB1_ONLY
+				pos_end = 1;
+				pos_start = 1;
+				#endif
+}
 ";"				{ return SEMICOLON;}
 "!="			{ return NEQ;}
 "="				{ return ASSIN;}
 \[\]			{ return ARRAY;}
 {identifierPattern} 	{ 
 	#ifndef LAB1_ONLY
-	// printf("yytext: %s\n", yytext);
-	// yylval.name = newSyntaxTreeNode(yytext);
 	strcpy(yylval.name, yytext);
 	#endif
-	return IDENTIFIER;} 
+	return IDENTIFIER;
+	} 
 
 . 				{return ERROR;}
 
