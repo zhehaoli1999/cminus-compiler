@@ -155,11 +155,13 @@ var-declaration: type-specifier ID SEMICOLON  {
         $3 = newSyntaxTreeNode("[");
         // $4 = newSyntaxTreeNode(yytext);
         $5 = newSyntaxTreeNode("]");
+        $6 = newSyntaxTreeNode(";");
         SyntaxTreeNode_AddChild($$, $1);
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
         SyntaxTreeNode_AddChild($$, $4);
         SyntaxTreeNode_AddChild($$, $5);
+        SyntaxTreeNode_AddChild($$, $6);
     }
     ;
 type-specifier: INT {
