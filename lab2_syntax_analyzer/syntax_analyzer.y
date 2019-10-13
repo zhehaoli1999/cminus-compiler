@@ -361,8 +361,8 @@ var: ID {
     | ID LBRACKET expression RBRACKET {
         $$ = newSyntaxTreeNode("var"); 
         // $1 = newSyntaxTreeNode(yytext);
-        $2 = newSyntaxTreeNode("(");
-        $4 = newSyntaxTreeNode(")");
+        $2 = newSyntaxTreeNode("[");
+        $4 = newSyntaxTreeNode("]");
         SyntaxTreeNode_AddChild($$, $1);
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);

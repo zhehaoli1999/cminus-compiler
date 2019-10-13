@@ -1,14 +1,14 @@
 # lab2 report 
 PB17151774 杨舒静
 
-## 实验目的
+## 实验内容
 利用bison语法分析器生成分析树
 
-## 实现要点
+## 实现设计
 ### 移进-归约冲突解决
 通过bison 编译中产生的`OUTPUT`报告, 可以知道`C_MINUS`语法中存在(且仅存在)一个移进-归约冲突
 ```bison
-15. selection-stmt → `if` `(` expression `)` statement | `if` `(` expression `)` statement `else` statement
+1.  selection-stmt → `if` `(` expression `)` statement | `if` `(` expression `)` statement `else` statement
 ```
 在bison 编译中产生的`OUTPUT`报告中, 当分析至以下项目时将产生移进-归约冲突。
 ```bison
@@ -57,7 +57,7 @@ selection-stmt: IF LPARENTHESE expression RPARENTHESE statement %prec LOWER_THAN
 ### 跳过token中的空格
 可以在flex中识别token后不返回TOKEN
 
-## 调试过程及小结
+## 实验难点(调试过程)
 ### CMAKE 使用
 1. ⚠️运行可执行文件时应当在根目录下, 因而所有文件的相对路径应以根目录为准
 2. 
@@ -81,6 +81,13 @@ selection-stmt: IF LPARENTHESE expression RPARENTHESE statement %prec LOWER_THAN
 id: IDENTIFIER
 ```
 
+对于`NUM`的处理同理可得
+
+
+## 实验小结
+在本次实验中的大量时间花在了最初让程序运行起来的过程中, 对了编写bison中展开式的过程由于处理的比较粗暴(可能有大量代码融于)以及利用vscode编辑器的快捷键功能, 总编写时间。
+
+由于从前在`CLION`环境下可以自动生成基础的CMAKE文件, 导致对于CMAKE文件的编写近乎一无所知。在本次实验中利用了部分时间学习，在以后的学习中也应进一步深入对于基础编译命令的掌握。
 
 ## 致谢
 感谢助教和gitlab上各位同学提供的解决方案
