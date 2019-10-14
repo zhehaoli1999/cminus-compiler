@@ -91,3 +91,7 @@ id: IDENTIFIER
 
 ## 致谢
 感谢助教和gitlab上各位同学提供的解决方案
+
+## blogs mark
+
+[bison grammar features](https://aquamentus.com/flex_bison.html)
