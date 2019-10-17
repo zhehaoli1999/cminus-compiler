@@ -360,18 +360,22 @@ int main(void) {
 |  |  |  |  |  >--* }
 
 ```
+
 1. 首先按照以下方式对函数gcd进行展开
     ```
     fun-declaration → type-specifier ID (params) compound-stmt
     ```
+    对其左部的非终结符建立一个节点, 右部的终结符建立节点, 然后将其链接至父节点。(对于右部的非终结符没有建立新节点)⚠️在此时ID看作了非终结符。
     而后`compound-stmt`具体表示了函数中语句。
     ```
     compound-stmt → { local-declarations statement-list }
     ```
+    同样, 对其左部的非终结符建立一个节点, 右部的终结符建立节点, 然后将其链接至父节点。(对于右部的非终结符没有建立新节点)。
     注意到`local-declarations`和`statement-list`的第一项展开为空, 表明在该函数体中仅有一个“大”语句`selection-stmt`
     ```
     selection-stmt → `if` `(` expression `)` statement | `if` `(` expression `)` statement `else` statement
     ```
+    同样, 对其左部的非终结符建立一个节点, 右部的终结符建立节点, 然后将其链接至父节点。(对于右部的非终结符没有建立新节点)
     在`selection-stmt`中按照预先定义好的优先级按照`selection-stmt → `if` `(` expression `)` statement `else` statement`进行展开。具体statement的展开与上同理。
     在else语句中, 函数循环调用了gcd函数
     ```
