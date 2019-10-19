@@ -3,7 +3,7 @@ int gcd (int u, int v) { /* calculate the gcd of u and v */
     else return gcd(v, u - u / v * v); /* v,u-u/v*v is equals to u mod v*/
 }
 int main(void) {
-    int x; int y; int temp
+    int x; int y; int temp;
     x = 72;
     y = 18;
     if (x<y) {

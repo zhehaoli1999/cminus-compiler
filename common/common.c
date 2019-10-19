@@ -18,7 +18,7 @@ int getAllTestcase(char filename[][256]){
             if(ent->d_name[0]  == '.'){
 				continue;
 			}
-            printf("reading file:%s\n", ent->d_name);
+            printf("reading file No.%d :%s\n", files_count, ent->d_name);
             strcpy(filename[files_count++], ent->d_name);
             //printf("%d %s\n", ++count, tmp.substr(0, tmp.rfind('.')).c_str());
         }

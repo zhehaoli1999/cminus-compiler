@@ -12,7 +12,7 @@
 #include "syntax_analyzer.h"
 #define YY_USER_ACTION yylloc.first_line = yylloc.last_line = yylineno; \
    yylloc.first_column = yycolumn; \
-   yylloc.last_column = yycolumn + yyleng - 1; \
+   yylloc.last_column = yycolumn + yyleng; \
    yycolumn += yyleng;
 #endif
 
@@ -38,7 +38,12 @@ identifierPattern [a-zA-Z][a-zA-Z]*
 
 
 	
-{numberPattern}		{ return NUMBER;}
+{numberPattern}		{ 
+	#ifndef LAB1_ONLY
+	yylval.val = yytext;
+	#endif
+	return NUMBER;
+}
 {commentPattern} {
 				#ifdef LAB1_ONLY
 				return COMMENT;

@@ -20,6 +20,7 @@ extern int yyrestart();
 extern FILE * yyin;
 extern int yydebug;
 yydebug = 1;
+int error = 0;
 
 // external variables from lexical_analyzer module
 extern int lines;
@@ -34,7 +35,7 @@ void yyerror(const char * s);
 %union {
     SyntaxTreeNode * tn;
     char name[100];
-    int val;
+    long val;
 /********** TODO: Fill in this union structure *********/
 }%error-verbose
 
@@ -68,7 +69,7 @@ void yyerror(const char * s);
 %token<tn>	VOID 
 %token<tn>	WHILE 
 %token<name>	IDENTIFIER
-%token<tn>	NUMBER 
+%token<val>	NUMBER 
 %token<tn>	ARRAY 
 %token<tn>	LETTER 
 %token<tn>	EOL 
@@ -107,6 +108,7 @@ void yyerror(const char * s);
 %type<tn> args
 %type<tn> arg-list
 %type<tn> ID
+%type<tn> NUM
 
 
 
@@ -149,16 +151,18 @@ var-declaration: type-specifier ID SEMICOLON  {
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
     }
-    | type-specifier ID LBRACKET NUMBER RBRACKET   {
+    | type-specifier ID LBRACKET NUM RBRACKET SEMICOLON  {
         $$ = newSyntaxTreeNode("var-declaration"); 
-        $3 = newSyntaxTreeNode("(");
-        $4 = newSyntaxTreeNode(yytext);
-        $5 = newSyntaxTreeNode(")");
+        $3 = newSyntaxTreeNode("[");
+        // $4 = newSyntaxTreeNode(yytext);
+        $5 = newSyntaxTreeNode("]");
+        $6 = newSyntaxTreeNode(";");
         SyntaxTreeNode_AddChild($$, $1);
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
         SyntaxTreeNode_AddChild($$, $4);
         SyntaxTreeNode_AddChild($$, $5);
+        SyntaxTreeNode_AddChild($$, $6);
     }
     ;
 type-specifier: INT {
@@ -358,8 +362,8 @@ var: ID {
     | ID LBRACKET expression RBRACKET {
         $$ = newSyntaxTreeNode("var"); 
         // $1 = newSyntaxTreeNode(yytext);
-        $2 = newSyntaxTreeNode("(");
-        $4 = newSyntaxTreeNode(")");
+        $2 = newSyntaxTreeNode("[");
+        $4 = newSyntaxTreeNode("]");
         SyntaxTreeNode_AddChild($$, $1);
         SyntaxTreeNode_AddChild($$, $2);
         SyntaxTreeNode_AddChild($$, $3);
@@ -468,16 +472,15 @@ factor: LPARENTHESE expression RPARENTHESE {
         $$ = newSyntaxTreeNode("factor"); 
         SyntaxTreeNode_AddChild($$, $1);
         }
-    | NUMBER {
+    | NUM {
         $$ = newSyntaxTreeNode("factor"); 
-        $1 = newSyntaxTreeNode(yytext);
+        // $1 = newSyntaxTreeNode(yytext);
         SyntaxTreeNode_AddChild($$, $1);
     }
     ;
 call: ID LPARENTHESE args RPARENTHESE{
         $$ = newSyntaxTreeNode("call"); 
         // $1 = newSyntaxTreeNode(yytext);
-        printf("ID: %s", yytext);
         $2 = newSyntaxTreeNode("(");
         $4 = newSyntaxTreeNode(")");
         SyntaxTreeNode_AddChild($$, $1);
@@ -510,14 +513,19 @@ arg-list: arg-list COMMA expression {
 ID: IDENTIFIER {
     $$ = newSyntaxTreeNode($1);
 }
+
+NUM: NUMBER {
+    $$ = newSyntaxTreeNode($1);
+}
 %%
 
 void yyerror(const char * s)
 {
 	// TODO: variables in Lab1 updates only in analyze() function in lexical_analyzer.l
 	//       You need to move position updates to show error output below
-	fprintf(stderr, "%s:%d syntax error for %s\n in %d %d", s, lines, yytext, yylloc.first_column, yylloc.last_column);
-
+	// fprintf(stderr, "%s:%d syntax error for %s\n", s, lines, yytext);
+    error = 1;
+    fprintf(stderr, "******%s:%d syntax error for %s in %d %d******\n", s, lines, yytext, yylloc.first_column, yylloc.last_column);
 }
 
 
@@ -550,7 +558,9 @@ void syntax(const char * input, const char * output)
 	yyparse();
 
 	printf("[OUTPUT] Printing tree to output file %s\n", outputpath);
-	printSyntaxTree(fp, gt);
+    if(error == 0){
+        printSyntaxTree(fp, gt);
+    }
 	// deleteSyntaxTree(gt);
 	gt = 0;
 
@@ -564,17 +574,26 @@ void syntax(const char * input, const char * output)
 /// Invoked in test_syntax.c
 int syntax_main(int argc, char ** argv)
 {	
-	char filename[10][256];
+	char filename[50][256];
 	char output_file_name[256];
 	// printf("syntax()\n");
 	// printf("%d, %d", pos_end, pos_start);
 	const char * suffix = ".syntax_tree";
 	int fn = getAllTestcase(filename);
 	for (int i = 0; i < fn; i++) {
-        printf("analyzing\n");
+        printf("analyzing No.%d: %s\n", i, filename[i]);
+        error = 0;
         int name_len = strstr(filename[i], ".cminus") - filename[i];
+        if(name_len < 1 || name_len > 100){
+            printf("[ERROR]: filename error wile file %s and file len: %s\n", filename[i], name_len);
+            continue;
+            i++;
+        }
+        // printf("analyzing: %s\n name_len: %d\n", filename[i], name_len);
         strncpy(output_file_name, filename[i], name_len);
+        printf("analyzing: %s\n", filename[i]);
         strcpy(output_file_name+name_len, suffix);
+        printf("analyzing: %s\n", filename[i]);
         syntax(filename[i], output_file_name);
 	}
 	return 0;
