@@ -54,10 +54,12 @@ int main() {
     auto iAdd = builder.CreateNSWAdd(iLoad, CONST(1));
     auto aAdd = builder.CreateNSWAdd(aLoad, iAdd);
     auto br_loop = builder.CreateBr(loop);
+    builder.CreateStore(iAdd, iAlloc);
+    builder.CreateStore(aAdd, aAlloc);
 
     // exit
-    auto iLoad_end = builder.CreateLoad(iAlloc);
-    builder.CreateRet(iLoad_end);
+    auto a_end = builder.CreateLoad(aAlloc);
+    builder.CreateRet(a_end);
 
     module->print(outs(), nullptr);
     return 0;

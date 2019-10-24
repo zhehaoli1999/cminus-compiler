@@ -16,18 +16,20 @@ define i32 @main() {
 loop:
   %4 = load i32, i32* %2 ; i
   %5 = load i32, i32* %3; 10 
-  %6 = icmp slt i32 %4, %5 
+  %6 = icmp slt i32 %4, 10
   br i1 %6, label %body, label %exit
 
 body: 
   %7 = load i32, i32* %1; a
   %8 = add nsw i32 %4, 1; i = i + 1
   %9 = add nsw i32 %7, %8; a = a + i
+  store i32 %8, i32* %2
+  store i32 %9, i32* %1
   br label %loop
 
 exit:
   %10 = load i32, i32* %1
-  ret i32 %4
+  ret i32 %10
 }
   
 attributes #0 = { noinline nounwind optnone uwtable "correctly-rounded-divide-sqrt-fp-math"="false" "disable-tail-calls"="false" "less-precise-fpmad"="false" "min-legal-vector-width"="0" "no-frame-pointer-elim"="true" "no-frame-pointer-elim-non-leaf" "no-infs-fp-math"="false" "no-jump-tables"="false" "no-nans-fp-math"="false" "no-signed-zeros-fp-math"="false" "no-trapping-math"="false" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+fxsr,+mmx,+sse,+sse2,+x87" "unsafe-fp-math"="false" "use-soft-float"="false" }
