@@ -87,6 +87,9 @@ dkms.conf
 # VS code
 .vscode
 .vs./syntax_tree/CMakeFiles/3.5.1/CMakeDetermineCompilerABI_C.bin
+
+# binary files
+# find . -executable -type f >>.gitignore
 ./syntax_tree/CMakeFiles/3.5.1/CompilerIdCXX/a.out
 ./syntax_tree/CMakeFiles/3.5.1/CompilerIdC/a.out
 ./syntax_tree/CMakeFiles/3.5.1/CMakeDetermineCompilerABI_CXX.bin
