@@ -35,7 +35,7 @@ int main() {
     auto mainBB = BasicBlock::Create(context, "entry", mainFun);
     auto calleeFun = Function::Create(FunctionType::get(TYPE32, Ints, false), GlobalValue::LinkageTypes::ExternalLinkage, "callee", module);
 
-    auto calleeBB = BasicBlock::Create(context, "entry", calleeFun);
+    auto calleeBB = BasicBlock::Create(context, "calleeEntry", calleeFun);
     builder.SetInsertPoint(calleeBB);
 
     
