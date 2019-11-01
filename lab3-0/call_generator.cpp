@@ -44,10 +44,7 @@ int main() {
     builder.CreateRet(res);
     
     builder.SetInsertPoint(mainBB);
-    auto retValue = builder.CreateAlloca(TYPE32);
-    builder.CreateStore(retValue, CONST(10));
-    auto retLoad = builder.CreateLoad(retValue);
-    auto call = builder.CreateCall(calleeFun, {retLoad});
+    auto call = builder.CreateCall(calleeFun, {CONST(10)});
 
     builder.CreateRet(call);
 

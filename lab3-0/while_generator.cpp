@@ -53,11 +53,12 @@ int main() {
     auto aLoad = builder.CreateLoad(aAlloc);
     auto iAdd = builder.CreateNSWAdd(iLoad, CONST(1));
     auto aAdd = builder.CreateNSWAdd(aLoad, iAdd);
-    auto br_loop = builder.CreateBr(loop);
     builder.CreateStore(iAdd, iAlloc);
     builder.CreateStore(aAdd, aAlloc);
+    auto br_loop = builder.CreateBr(loop);
 
     // exit
+    builder.SetInsertPoint(exit);
     auto a_end = builder.CreateLoad(aAlloc);
     builder.CreateRet(a_end);
 
