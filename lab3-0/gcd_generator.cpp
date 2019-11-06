@@ -52,7 +52,6 @@ int main() {
   auto vLoad = builder.CreateLoad(vAlloca);           //将参数v load上来
   auto icmp = builder.CreateICmpEQ(vLoad, CONST(0));  // v和0的比较,注意ICMPEQ
 
-  auto trueAA = BasicBlock::addUse();
   auto trueBB = BasicBlock::Create(context, "trueBB", gcdFun);    // true分支
   auto falseBB = BasicBlock::Create(context, "falseBB", gcdFun);  // false分支
   auto retBB = BasicBlock::Create(
