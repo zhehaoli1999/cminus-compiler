@@ -21,12 +21,14 @@ void CminusBuilder::visit(syntax_program &node) {
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
+    // It can be intepreted as a simple expression
+    // Hence just directly return its valeu via ret
     ret = CONST(node.value);
  }
 
 void CminusBuilder::visit(syntax_var_declaration &node) {
     // assert var can NOT be void type
-    // TODO: how to deal with multi-layer array ?
+    // TODO: how to deal with multi-layer array ? Is it allowed in cmiuns?
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEArry = ArrayType::getInt32Ty(context);
     
@@ -35,7 +37,7 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     // But in var declarasiton, it should declare a array with its len
     if(!scope.in_global()){
         if(node.num){
-        // array
+        // TODO: local array
             std::cout<<"declare an array"<<std::endl;
         } else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
@@ -103,12 +105,13 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     std::cout<<"fucntion parameters: "<<args_value.size()<<std::endl;
     
+    // assert node params size = args_value size
     if(node.params.size() > 0 && args_value.size() > 0){
         int i = 0;
         for (auto arg : node.params){
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
-                //ERR
+                std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
             } else {
                 std::cout<<"enter store value"<<std::endl;
                 builder.CreateStore(args_value[i++], pAlloc);
@@ -118,17 +121,16 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     
     node.compound_stmt->accept(*this);
     scope.exit();
-    // for later use
-    std::cout<<"Scope in global? "<< scope.in_global()<<std::endl;
+    // for later unction-call
     scope.push(node.id, funcFF);
 }
 
 void CminusBuilder::visit(syntax_param &node) {
     // It is a declaration in the function
-    // Hence, it should add parameters into scope
+    // Hence, parameters cannot be in global scope
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
-    //TODO: Should malloc or not ???
+    //TODO: Should malloc or not ??? Should be array or ptr ???
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
     Value * pAlloc;
     if(node.type == TYPE_INT && !node.isarray){
@@ -141,13 +143,12 @@ void CminusBuilder::visit(syntax_param &node) {
         scope.push(node.id, pAlloc);
     } else{
             // void
-            std::cout<<"[ERR]Variable void"<<std::endl;
+            // std::cout<<"[ERR]Variable void"<<std::endl;
     }
     std::cout<<"exit param"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_compound_stmt &node) {
-    // TODO: how to deal with global varibale decalarations
     // accept local declarations
     // accept statementlist
     for(auto ld : node.local_declarations){
