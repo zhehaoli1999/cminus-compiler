@@ -8,7 +8,17 @@ declare void @output(i32)
 
 declare void @neg_idx_except()
 
-define i32 @main() {
+define void @call(i32, i32) {
 entry:
+  %2 = alloca i32
+  %3 = alloca i32
+  store i32 %0, i32* %2
+  store i32 %1, i32* %3
+  ret void
+}
+
+define void @main() {
+entry:
+  call void @call(i32 10, i32 20)
   ret void
 }
