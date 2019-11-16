@@ -1,3 +1,4 @@
+int a;
 void call(int a, int b){
     return ;
 }
