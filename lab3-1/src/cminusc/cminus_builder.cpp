@@ -1,4 +1,5 @@
 #include "cminus_builder.hpp"
+#include <llvm/IR/GlobalVariable.h>
 #include <iostream>
 
 using namespace llvm;
@@ -20,32 +21,76 @@ void CminusBuilder::visit(syntax_program &node) {
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
+    // It can be intepreted as a simple expression
+    // Hence just directly return its valeu via ret
     ret = CONST(node.value);
  }
 
 void CminusBuilder::visit(syntax_var_declaration &node) {
     // assert var can NOT be void type
+    // TODO: how to deal with multi-layer array ? Is it allowed in cmiuns?
     Type* TYPE32 = Type::getInt32Ty(context);
-    auto ldAlloc = builder.CreateAlloca(TYPE32);
-     scope.push(node.id, ldAlloc);
+    Type* TYPEArry = ArrayType::getInt32Ty(context);
+    
+    std::cout<<"enter var declarations"<<std::endl;
+    // Note that in param declaration, it just declare a pointer
+    // But in var declarasiton, it should declare a array with its len
+    if(!scope.in_global()){
+        if(node.num){
+        // TODO: local array
+            std::cout<<"declare an array"<<std::endl;
+        } else{
+            auto ldAlloc = builder.CreateAlloca(TYPE32);
+            scope.push(node.id, ldAlloc);
+        }
+    } else {
+        if(node.num){
+            std::cout<<"enter global array declarations"<<std::endl;
+            // TODO: global array
+        } else {
+            std::cout<<"enter global var declarations"<<std::endl;
+            // declarations without initialization value and name
+            // TODO: Global variable declaration failed
+            auto gdAlloc = new GlobalVariable(TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            
+            // gdAlloc->setAlignment(0);
+            // gdAlloc->setInitializer(CONST(0));
+            scope.push(node.id, gdAlloc);
+        }
+    }
+    
 }
 
-// TODO: There are two productions involoved in this 
 void CminusBuilder::visit(syntax_fun_declaration &node) {
     //In the declaration, parameter identifiers should be pushed into the callee function scope. And function identifier should be caller function scope
     scope.enter();
-
+    std::cout<<"enter func declarations"<<std::endl;
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
-    Type* TYPEARRAY_32 = Type::getInt32PtrTy(context);
+    Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
     Type * funType = node.type == TYPE_VOID ? TYPEV : TYPE32;
 
     // function parameters' type
-    std::vector<Type *> args_type(node.params.size(), TYPE32);
+    std::vector<Type *> args_type;
+
+    // get params type
+    // If params type is VOID, then assert there should not be other params and return args)type with null
+    if(node.params.size() > 0){
+        for(auto arg : node.params){
+            if(arg->isarray){
+                //TODO: Should it push pointer type or array type
+                args_type.push_back(TYPEARRAY_32);
+            } else {
+                // it must be int
+                args_type.push_back(TYPE32);
+            }
+        }
+    }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
-    //TODO; whether the variables in class have been initialized
+    
+    std::cout<<"enter params declarations"<<std::endl;
     // Note that node.params are Syntrx Tree Node ptr, it can NOT be directly passed into function declaration list
     for(auto arg : node.params ) {
         arg->accept(*this);
@@ -60,54 +105,50 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     std::cout<<"fucntion parameters: "<<args_value.size()<<std::endl;
     
+    // assert node params size = args_value size
     if(node.params.size() > 0 && args_value.size() > 0){
         int i = 0;
         for (auto arg : node.params){
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
-                //ERR
+                std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
             } else {
+                std::cout<<"enter store value"<<std::endl;
                 builder.CreateStore(args_value[i++], pAlloc);
             }
         }
     }
     
-
     node.compound_stmt->accept(*this);
     scope.exit();
-    // for later use
-    std::cout<<"Scope in global? "<< scope.in_global()<<std::endl;
+    // for later unction-call
     scope.push(node.id, funcFF);
 }
 
 void CminusBuilder::visit(syntax_param &node) {
     // It is a declaration in the function
-    // Hence, it should add parameters into scope
+    // Hence, parameters cannot be in global scope
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
-    Type* TYPEARRAY_32 = Type::getInt32PtrTy(context);
+    //TODO: Should malloc or not ??? Should be array or ptr ???
+    Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
     Value * pAlloc;
     if(node.type == TYPE_INT && !node.isarray){
-        if(scope.in_global()){
-            //TODO: glocal value
-            // pAlloc = new GlobalVariable(module.get(), TYPE32, false, GlobalValue::CommonLinkage, node.id);
-        } else {
-            pAlloc = builder.CreateAlloca(TYPE32);
-        }
+        // assert that functions' parameters can NOT be global variables
+        pAlloc = builder.CreateAlloca(TYPE32);
         scope.push(node.id, pAlloc);
-        
     } else if (node.type == TYPE_INT && node.isarray){
-        auto pAlloc = builder.CreateAlloca(TYPEARRAY_32);
+        // array
+        pAlloc = builder.CreateAlloca(TYPEARRAY_32);
         scope.push(node.id, pAlloc);
     } else{
             // void
-            std::cout<<"[ERR]Variable void"<<std::endl;
+            // std::cout<<"[ERR]Variable void"<<std::endl;
     }
     std::cout<<"exit param"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_compound_stmt &node) {
-    // TODO: how to deal with global varibale decalarations
     // accept local declarations
     // accept statementlist
     for(auto ld : node.local_declarations){
@@ -195,5 +236,4 @@ void CminusBuilder::visit(syntax_call &node) {
         builder.CreateCall(fAlloc, funargs);
     }
 }
-
 
