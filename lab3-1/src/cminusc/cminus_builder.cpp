@@ -87,7 +87,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         }
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
-    auto funBB = BasicBlock::Create(context, "entry", funcFF);
+    auto funBB = BasicBlock::Create(context, node.id, funcFF);
     builder.SetInsertPoint(funBB);
     
     std::cout<<"enter params declarations"<<std::endl;
