@@ -74,13 +74,13 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     std::vector<Type *> args_type;
 
     // get params type
-    // If params type is VOID, then assert there should not be other params and return args)type with null
+    // If params type is VOID, then assert there should not be other params and return args_type with null
     if(node.params.size() > 0){
         for(auto arg : node.params){
             if(arg->isarray){
                 //TODO: Should it push pointer type or array type
                 args_type.push_back(TYPEARRAY_32);
-            } else {
+            } else if(arg->type == TYPE_INT) {
                 // it must be int
                 args_type.push_back(TYPE32);
             }
