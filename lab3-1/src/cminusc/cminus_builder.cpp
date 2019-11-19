@@ -103,7 +103,8 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         }
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
-    auto funBB = BasicBlock::Create(context, node.id, funcFF);
+    // FIXME: check if there can be labels with same id in different scope
+    auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
     std::cout<<"enter params declarations"<<std::endl;
@@ -180,7 +181,9 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
     // expression-stmt→expression ; ∣ ;
-    node.expression->accept(*this);
+    if(node.expression != nullptr){
+        node.expression->accept(*this);
+    }
 }
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {}
