@@ -6,10 +6,14 @@ using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
+#define LOAD(ret) builder.CreateLoad(ret->getType(), ret);
+
 // You can define global variables here
 // to store state
 Value * ret;
 Type * retType;
+// ConstantAggregateZero
+Value * expression;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -27,11 +31,13 @@ void CminusBuilder::visit(syntax_num &node) {
  }
 
 void CminusBuilder::visit(syntax_var_declaration &node) {
+    // var-declaration →type-specifier ID ; ∣ type-specifier ID [ NUM ] ;
+
     // assert var can NOT be void type
-    // TODO: how to deal with multi-layer array ? Is it allowed in cmiuns?
+    // TODO: how to deal with multi-layer array ? Is it allowed in cminus? ---> No
     Type* TYPE32 = Type::getInt32Ty(context);
-    Type* TYPEArry = ArrayType::getInt32Ty(context);
-    
+    Type* TYPEV = Type::getVoidTy(context);
+
     std::cout<<"enter var declarations"<<std::endl;
     // Note that in param declaration, it just declare a pointer
     // But in var declarasiton, it should declare a array with its len
@@ -39,15 +45,25 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
         if(node.num){
         // TODO: local array
             std::cout<<"declare an array"<<std::endl;
-        } else{
+            // 创建ArrayType:
+            ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
+            auto lArrayAlloc = builder.CreateAlloca(arrayType);
+            // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
+            scope.push(node.id,lArrayAlloc);
+        } 
+        else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
+            // AllocaInst* ldAlloc = new AllocaInst(TYPE32,node.num->value);
             scope.push(node.id, ldAlloc);
         }
     } else {
         if(node.num){
             std::cout<<"enter global array declarations"<<std::endl;
             // TODO: global array
-        } else {
+            ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
+            auto gArrayAlloc = new GlobalVariable(arrayType, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+        }
+        else {
             std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
@@ -64,10 +80,10 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
 void CminusBuilder::visit(syntax_fun_declaration &node) {
     //In the declaration, parameter identifiers should be pushed into the callee function scope. And function identifier should be caller function scope
     scope.enter();
-    std::cout<<"enter func declarations"<<std::endl;
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
+    std::cout<<"enter func declarations"<<std::endl;
     Type * funType = node.type == TYPE_VOID ? TYPEV : TYPE32;
 
     // function parameters' type
@@ -163,6 +179,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
+    // expression-stmt→expression ; ∣ ;
     node.expression->accept(*this);
 }
 
@@ -180,45 +197,128 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     }
 }
 
+// 似乎有了var-declaration，此var函数可以不用
 void CminusBuilder::visit(syntax_var &node) {
     
 }
 
-void CminusBuilder::visit(syntax_assign_expression &node) {}
+void CminusBuilder::visit(syntax_assign_expression &node) {
+    // var = expression
+    std::cout<<"enter assign-expression"<<std::endl;
+    Value* var = scope.find(node.var->id);
+    // if the var is not defined before:
+    if(!var){
+        std::cout<<"[ERR] try to assign an undefined variable: "<<node.var->id<<std::endl;
+    }
+    else{
+        node.expression.get()->accept(*this);
+        std::cout<<"before store."<<std::endl;
+
+        // the value of expression is stored in ret
+        builder.CreateStore(ret,var);
+        std::cout<<"stored."<<std::endl;
+        
+    }
+}
 
 void CminusBuilder::visit(syntax_simple_expression &node) {
     // simple-expression → additive-expression relop additive- expression | additive-expression
+
+    std::cout<<"enter simple-expression"<<std::endl;
     node.additive_expression_l.get()->accept(*this);
-    if(node.additive_expression_r == nullptr){
-        auto v = ret;
-    } else {
-        auto lValue = ret;
-        auto lType = retType;
-        node.additive_expression_r->accept(*this);
-        // TODO: 
+
+    // 按照 simple-expression → additive-expression relop additive- expression
+    if(node.additive_expression_r != nullptr){
+        // lValue: 必须先load
+        auto lValue = builder.CreateLoad(ret->getType(), ret);
+
+        node.additive_expression_r.get()->accept(*this);
+        auto rValue = ret;
+
+        Value* icmp ;   
+        switch (node.op)
+        {
+            case OP_LE:
+                icmp = builder.CreateICmpSLE(lValue, rValue);      
+                break;
+            case OP_LT:
+                icmp = builder.CreateICmpSLT(lValue, rValue);        
+                break;
+            case OP_GT:
+                icmp = builder.CreateICmpSGT(lValue, rValue);        
+                break;
+            case OP_GE:
+                icmp = builder.CreateICmpSGE(lValue, rValue);  
+                break;
+            case OP_EQ:
+                icmp = builder.CreateICmpEQ(lValue, rValue);  
+                break;
+            case OP_NEQ:
+                icmp = builder.CreateICmpNE(lValue, rValue); 
+                break;
+            default:
+                break;
+        }
+        // 然后修改全局变量ret的值
+        ret = icmp;
     }
+    
 }
 
 void CminusBuilder::visit(syntax_additive_expression &node) {
     // additive-expression → additive-expression addop term | term 
     
+    // 按照 additive-expression → term 
     if(node.additive_expression == nullptr){
-        std::cout<<"enter add"<<std::endl;
+        std::cout<<"enter additive-expression -> term"<<std::endl;
         // It seems that it doesn't matter whether use shared-ptr.get() or not to refer to its member function
         node.term.get()->accept(*this);
-    } else {
-        //TODO:
+    } 
+
+    // 按照 additive-expression → additive-expression addop term 
+    else {
+        node.additive_expression.get()->accept(*this);
+        auto lValue = builder.CreateLoad(ret->getType(), ret);
+
+        node.term.get()->accept(*this);
+        auto rValue = ret;
+
+        Value* iAdd;
+        if (node.op == OP_PLUS){
+            iAdd = builder.CreateNSWAdd(lValue,rValue);
+        }
+        else if(node.op == OP_MINUS){
+            iAdd = builder.CreateNSWSub(lValue,rValue);
+        }
+        ret = iAdd;
     }
 }
 
 void CminusBuilder::visit(syntax_term &node) {
     // term → term mulop factor | factor
     
+    // 按照 term -> factor
     if(node.term == nullptr){
-        std::cout<<"enter term"<<std::endl;
+        std::cout<<"enter factor"<<std::endl;
         node.factor->accept(*this);
-    } else {
-        // TODO
+    } 
+    // 按照 term -> term mulop factor
+    else {
+        node.term.get()-> accept(*this);
+        auto lValue = LOAD(ret);
+        node.factor.get()->accept(*this);
+        auto rValue = ret;
+        Value* result;
+
+        // mulop is declared in syntax_tree.hpp
+        if(node.op == OP_MUL){
+            result = builder.CreateNSWMul(lValue, rValue);
+        }
+        else if(node.op == OP_DIV){
+            // use UDIV rather than SDIV for cminus：cminus只有int
+            result = builder.CreateUDiv(lValue, rValue);
+        }
+        ret = result;
     }
 }
 
