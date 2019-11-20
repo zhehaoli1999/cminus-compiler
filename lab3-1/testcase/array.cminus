@@ -1,7 +1,6 @@
-void main(void){
+int main(void){
     int a[10];
-    int b;
     a[0] = 1;
     a[2] = 5;
-    return ;
+    return a[2];
 }

@@ -6,8 +6,7 @@ using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
-#define LOAD(ret) builder.CreateLoad(ret->getType(), ret);
-
+#define LOAD(type, ret) builder.CreateLoad(type, ret);
 
 // You can define global variables here
 // to store state
@@ -18,7 +17,6 @@ Type * retType;
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
-    
     for(auto d : node.declarations){
         d->accept(*this);
     }
@@ -197,8 +195,10 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
-        
-        // TODO: for other expressions' type
+       node.expression.get() -> accept(*this);
+       Type* TYPE32 = Type::getInt32Ty(context);
+       auto retLoad = builder.CreateLoad(TYPE32, ret);
+       builder.CreateRet(retLoad);
     }
 }
 
@@ -226,11 +226,15 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
     node.var.get()->accept(*this);
     Value* var = ret;
     node.expression.get()->accept(*this);
-    std::cout<<"before store."<<std::endl;
+    Type* TYPE1 = Type::getInt1Ty(context);
+
+    // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
+    if (ret->getType() == TYPE1){
+        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), true);
+    }
 
     // the value of expression is stored in ret
     builder.CreateStore(ret,var);
-    std::cout<<"stored."<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_simple_expression &node) {
@@ -242,7 +246,8 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
     // 按照 simple-expression → additive-expression relop additive- expression
     if(node.additive_expression_r != nullptr){
         // lValue: 必须先load
-        auto lValue = builder.CreateLoad(ret->getType(), ret);
+        Type* TYPE32 = Type::getInt32Ty(context);
+        auto lValue = builder.CreateLoad(TYPE32, ret);
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -290,18 +295,26 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
     // 按照 additive-expression → additive-expression addop term 
     else {
         node.additive_expression.get()->accept(*this);
-        auto lValue = builder.CreateLoad(ret->getType(), ret);
+        Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr){
+            lValue = builder.CreateLoad(TYPE32, ret);
+        }
+        else lValue = ret;
 
         node.term.get()->accept(*this);
         auto rValue = ret;
 
         Value* iAdd;
         if (node.op == OP_PLUS){
+            //  builder.CreateNSWAdd 返回的type是TYPE32, 不是ptr to TYPE32
             iAdd = builder.CreateNSWAdd(lValue,rValue);
         }
         else if(node.op == OP_MINUS){
             iAdd = builder.CreateNSWSub(lValue,rValue);
         }
+        
         ret = iAdd;
     }
 }
@@ -318,8 +331,10 @@ void CminusBuilder::visit(syntax_term &node) {
 
     // 按照 term -> term mulop factor
     else {
+        Type* TYPE32 = Type::getInt32Ty(context);
+
         node.term.get()-> accept(*this);
-        auto lValue = LOAD(ret);
+        auto lValue = LOAD(TYPE32, ret);
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
