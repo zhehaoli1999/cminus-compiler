@@ -6,21 +6,19 @@ using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
-#define LOAD(ret) builder.CreateLoad(ret->getType(), ret);
+#define LOAD(type, ret) builder.CreateLoad(type, ret);
 
 // You can define global variables here
 // to store state
 Value * ret;
 Type * retType;
 // ConstantAggregateZero
-Value * expression;
 
 //store function for creating basic block
 Function * currentFunc;
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
-    
     for(auto d : node.declarations){
         d->accept(*this);
     }
@@ -36,7 +34,6 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     // var-declaration →type-specifier ID ; ∣ type-specifier ID [ NUM ] ;
 
     // assert var can NOT be void type
-    // TODO: how to deal with multi-layer array ? Is it allowed in cminus? ---> No
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
 
@@ -47,7 +44,8 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
         if(node.num){
         // TODO: local array
             std::cout<<"declare an array"<<std::endl;
-            // 创建ArrayType:
+
+            // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType);
             // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
@@ -190,11 +188,15 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
+<<<<<<< HEAD
     std::cout<<"enter selection statement"<<std::endl;
     node.expression->accept(*this);
     auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
     auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
     builder.CreateCondBr(ret,trueBranch,falseBranch);
+=======
+
+>>>>>>> a922da7dacd7a4dcbf88519ecdb9e70da856a9d5
 }
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {}
@@ -204,33 +206,46 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
-        
-        // TODO: for other expressions' type
+       node.expression.get() -> accept(*this);
+       Type* TYPE32 = Type::getInt32Ty(context);
+       auto retLoad = builder.CreateLoad(TYPE32, ret);
+       builder.CreateRet(retLoad);
     }
 }
 
-// 似乎有了var-declaration，此var函数可以不用
 void CminusBuilder::visit(syntax_var &node) {
-    
+    auto var = scope.find(node.id);
+    if(var){
+        // 普通变量
+        if(!node.expression) ret = var;
+        // 数组变量
+        else{
+            node.expression.get()->accept(*this);
+            auto num = ret; 
+            auto arrayPtr = builder.CreateGEP(var,num);
+            ret = arrayPtr;
+        } 
+    }
+    else{
+        std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
+    }  
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
     // var = expression
     std::cout<<"enter assign-expression"<<std::endl;
-    Value* var = scope.find(node.var->id);
-    // if the var is not defined before:
-    if(!var){
-        std::cout<<"[ERR] try to assign an undefined variable: "<<node.var->id<<std::endl;
-    }
-    else{
-        node.expression.get()->accept(*this);
-        std::cout<<"before store."<<std::endl;
+    node.var.get()->accept(*this);
+    Value* var = ret;
+    node.expression.get()->accept(*this);
+    Type* TYPE1 = Type::getInt1Ty(context);
 
-        // the value of expression is stored in ret
-        builder.CreateStore(ret,var);
-        std::cout<<"stored."<<std::endl;
-        
+    // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
+    if (ret->getType() == TYPE1){
+        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), true);
     }
+
+    // the value of expression is stored in ret
+    builder.CreateStore(ret,var);
 }
 
 void CminusBuilder::visit(syntax_simple_expression &node) {
@@ -242,7 +257,8 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
     // 按照 simple-expression → additive-expression relop additive- expression
     if(node.additive_expression_r != nullptr){
         // lValue: 必须先load
-        auto lValue = builder.CreateLoad(ret->getType(), ret);
+        Type* TYPE32 = Type::getInt32Ty(context);
+        auto lValue = builder.CreateLoad(TYPE32, ret);
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -290,18 +306,26 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
     // 按照 additive-expression → additive-expression addop term 
     else {
         node.additive_expression.get()->accept(*this);
-        auto lValue = builder.CreateLoad(ret->getType(), ret);
+        Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr){
+            lValue = builder.CreateLoad(TYPE32, ret);
+        }
+        else lValue = ret;
 
         node.term.get()->accept(*this);
         auto rValue = ret;
 
         Value* iAdd;
         if (node.op == OP_PLUS){
+            //  builder.CreateNSWAdd 返回的type是TYPE32, 不是ptr to TYPE32
             iAdd = builder.CreateNSWAdd(lValue,rValue);
         }
         else if(node.op == OP_MINUS){
             iAdd = builder.CreateNSWSub(lValue,rValue);
         }
+        
         ret = iAdd;
     }
 }
@@ -311,13 +335,17 @@ void CminusBuilder::visit(syntax_term &node) {
     
     // 按照 term -> factor
     if(node.term == nullptr){
+        // std::cout<<node.factor<<std::endl;
         std::cout<<"enter factor"<<std::endl;
         node.factor->accept(*this);
-    } 
+    }
+
     // 按照 term -> term mulop factor
     else {
+        Type* TYPE32 = Type::getInt32Ty(context);
+
         node.term.get()-> accept(*this);
-        auto lValue = LOAD(ret);
+        auto lValue = LOAD(TYPE32, ret);
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
