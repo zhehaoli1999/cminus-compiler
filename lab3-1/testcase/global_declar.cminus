@@ -1,0 +1,7 @@
+int a; /* 是否正确？？ */
+
+void main(void){
+    int b;
+    b = a;
+    return b; 
+}
