@@ -15,6 +15,8 @@ Type * retType;
 // ConstantAggregateZero
 Value * expression;
 
+//store function for creating basic block
+Function * currentFunc;
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
@@ -104,6 +106,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
+    currentFunc = funcFF;
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -186,7 +189,13 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
     }
 }
 
-void CminusBuilder::visit(syntax_selection_stmt &node) {}
+void CminusBuilder::visit(syntax_selection_stmt &node) {
+    std::cout<<"enter selection statement"<<std::endl;
+    node.expression->accept(*this);
+    auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
+    auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
+    builder.CreateCondBr(ret,trueBranch,falseBranch);
+}
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {}
 
