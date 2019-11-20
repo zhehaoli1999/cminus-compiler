@@ -8,12 +8,12 @@ using namespace llvm;
 
 #define LOAD(ret) builder.CreateLoad(ret->getType(), ret);
 
+
 // You can define global variables here
 // to store state
 Value * ret;
 Type * retType;
 // ConstantAggregateZero
-Value * expression;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -34,7 +34,6 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     // var-declaration →type-specifier ID ; ∣ type-specifier ID [ NUM ] ;
 
     // assert var can NOT be void type
-    // TODO: how to deal with multi-layer array ? Is it allowed in cminus? ---> No
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
 
@@ -45,7 +44,8 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
         if(node.num){
         // TODO: local array
             std::cout<<"declare an array"<<std::endl;
-            // 创建ArrayType:
+
+            // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType);
             // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
@@ -183,7 +183,9 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
     node.expression->accept(*this);
 }
 
-void CminusBuilder::visit(syntax_selection_stmt &node) {}
+void CminusBuilder::visit(syntax_selection_stmt &node) {
+
+}
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {}
 
@@ -197,28 +199,35 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     }
 }
 
-// 似乎有了var-declaration，此var函数可以不用
 void CminusBuilder::visit(syntax_var &node) {
-    
+    auto var = scope.find(node.id);
+    if(var){
+        // 普通变量
+        if(!node.expression) ret = var;
+        // 数组变量
+        else{
+            node.expression.get()->accept(*this);
+            auto num = ret; 
+            auto arrayPtr = builder.CreateGEP(var,num);
+            ret = arrayPtr;
+        } 
+    }
+    else{
+        std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
+    }  
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
     // var = expression
     std::cout<<"enter assign-expression"<<std::endl;
-    Value* var = scope.find(node.var->id);
-    // if the var is not defined before:
-    if(!var){
-        std::cout<<"[ERR] try to assign an undefined variable: "<<node.var->id<<std::endl;
-    }
-    else{
-        node.expression.get()->accept(*this);
-        std::cout<<"before store."<<std::endl;
+    node.var.get()->accept(*this);
+    Value* var = ret;
+    node.expression.get()->accept(*this);
+    std::cout<<"before store."<<std::endl;
 
-        // the value of expression is stored in ret
-        builder.CreateStore(ret,var);
-        std::cout<<"stored."<<std::endl;
-        
-    }
+    // the value of expression is stored in ret
+    builder.CreateStore(ret,var);
+    std::cout<<"stored."<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_simple_expression &node) {
@@ -299,9 +308,11 @@ void CminusBuilder::visit(syntax_term &node) {
     
     // 按照 term -> factor
     if(node.term == nullptr){
+        // std::cout<<node.factor<<std::endl;
         std::cout<<"enter factor"<<std::endl;
         node.factor->accept(*this);
-    } 
+    }
+
     // 按照 term -> term mulop factor
     else {
         node.term.get()-> accept(*this);
