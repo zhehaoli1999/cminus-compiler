@@ -90,19 +90,20 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     std::vector<Type *> args_type;
 
     // get params type
-    // If params type is VOID, then assert there should not be other params and return args)type with null
+    // If params type is VOID, then assert there should not be other params and return args_type with null
     if(node.params.size() > 0){
         for(auto arg : node.params){
             if(arg->isarray){
                 //TODO: Should it push pointer type or array type
                 args_type.push_back(TYPEARRAY_32);
-            } else {
+            } else if(arg->type == TYPE_INT) {
                 // it must be int
                 args_type.push_back(TYPE32);
             }
         }
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
+    // FIXME: check if there can be labels with same id in different scope
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -180,7 +181,9 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
     // expression-stmt→expression ; ∣ ;
-    node.expression->accept(*this);
+    if(node.expression != nullptr){
+        node.expression->accept(*this);
+    }
 }
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
