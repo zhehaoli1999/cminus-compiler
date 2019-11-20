@@ -127,6 +127,17 @@ TIPS:
 - 可以通过vscode `TODO`插件查找所有TODO项
 - 可以通过vscode `git graph`插件查看分支情况
 
+##### 20191119 zhehao update
+1. 在 void CminusBuilder::visit(syntax_var_declaration &node) 中增加了数组变量的分配语句
+1. 在 void CminusBuilder::visit(syntax_assign_expression &node) 中增加了store语句
+1. 在 void CminusBuilder::visit(syntax_simple_expression &node) 中增加了关系运算符计算语句
+1. 在 void CminusBuilder::visit(syntax_additive_expression &node) 中增加了加法计算语句
+1. 在 void CminusBuilder::visit(syntax_term &node) 中增加了乘法除法的计算语句
+1. 在testcase目录下增加了array.cminus, if.cminus等测试样例。
+
+
+其他：多层数组在cminus语法中应该是不合法的。
+
 ##### 测试样例1: foo.cminus
 主要用于测试函数定义、函数调用、参数传递、简单表达式
 ```cpp
