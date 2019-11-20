@@ -150,6 +150,9 @@ void main(void){
 }
 ```
 
+##### 20191120 yk update
+1. 添加currentFunc全局变量用于创建基本块
+2. selection-statement第一版本。通过在函数末尾增加return来解决空的outif块的问题,但在分支中存在return时，会有冗余的br->outif语句，导致标号出现问题。
 ### docs
 
 [这篇中有一些全局变量的使用方法]](https://gist.github.com/alloy/d86b007b1b14607a112f)
