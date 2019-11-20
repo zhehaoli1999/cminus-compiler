@@ -8,7 +8,7 @@ declare void @output(i32)
 
 declare void @neg_idx_except()
 
-define void @main() {
+define i32 @main() {
 entry:
   %0 = alloca [10 x i32]
   %1 = alloca i32
@@ -16,5 +16,6 @@ entry:
   store i32 1, [10 x i32]* %2
   %3 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
   store i32 5, [10 x i32]* %3
-  ret void
+  %4 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
+  ret [10 x i32]* %4
 }
