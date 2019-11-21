@@ -166,10 +166,13 @@ void CminusBuilder::visit(syntax_param &node) {
 void CminusBuilder::visit(syntax_compound_stmt &node) {
     // accept local declarations
     // accept statementlist
-    for(auto ld : node.local_declarations){
+    if(node.local_declarations.size() > 0){
+        for(auto ld : node.local_declarations){
         // assert ld.type is INT
         ld->accept(*this);
+        }
     }
+    
     std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
     for(auto s : node.statement_list){
         s->accept(*this);
