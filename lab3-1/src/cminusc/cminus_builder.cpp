@@ -138,12 +138,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
-    // if(node.type == TYPE_VOID){
-    //     builder.CreateRet(nullptr);
-    // }
-    // else{
-    //     builder.CreateRet(CONST(0));
-    // }
     scope.exit();
     // for later unction-call
     scope.push(node.id, funcFF);
@@ -242,7 +236,24 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {
+    // iteration-stmt→while ( expression ) statement
+    std::cout<<"enter selection statement"<<std::endl;
+    auto loopJudge = BasicBlock::Create(context, "loopJudge", currentFunc);
+    auto loopBody = BasicBlock::Create(context, "loopBody", currentFunc);
+    auto out = BasicBlock::Create(context, "outloop", currentFunc);
+    Type* TYPE1 = Type::getInt1Ty(context);
+    builder.CreateBr(loopJudge);
     
+    builder.SetInsertPoint(loopJudge);
+    node.expression->accept(*this);
+    //auto retload = builder.CreateLoad(TYPE1,ret);
+    builder.CreateCondBr(ret, loopBody, out);
+
+    builder.SetInsertPoint(loopBody);
+    node.statement->accept(*this);
+    builder.CreateBr(loopJudge);
+
+    builder.SetInsertPoint(out);
 }
 
 void CminusBuilder::visit(syntax_return_stmt &node) {
