@@ -1,7 +1,6 @@
 #include "cminus_builder.hpp"
 #include <llvm/IR/GlobalVariable.h>
 #include <iostream>
-
 using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
@@ -16,6 +15,7 @@ Type * retType;
 
 //store function for creating basic block
 Function * currentFunc;
+
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
@@ -138,12 +138,12 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
-    if(node.type == TYPE_VOID){
-        builder.CreateRet(nullptr);
-    }
-    else{
-        builder.CreateRet(CONST(0));
-    }
+    // if(node.type == TYPE_VOID){
+    //     builder.CreateRet(nullptr);
+    // }
+    // else{
+    //     builder.CreateRet(CONST(0));
+    // }
     scope.exit();
     // for later unction-call
     scope.push(node.id, funcFF);
@@ -201,18 +201,30 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     if(node.else_statement != nullptr){
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
-        auto out = BasicBlock::Create(context, "outif", currentFunc);
+        auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
+        
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        builder.CreateBr(out);
+        auto pt = trueBranch->getTerminator();
+
+        if(pt == nullptr){ // not returned inside the block
+            out->insertInto(currentFunc);
+            builder.CreateBr(out);
+        }
+
         // falseBB
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
-        builder.CreateBr(out);
+        auto pf = falseBranch->getTerminator();
 
-        builder.SetInsertPoint(out);
+        if(pf == nullptr){ // not returned inside the block
+            if (pt != nullptr) out->insertInto(currentFunc);
+            builder.CreateBr(out);
+        }
+        
+        if(pt == nullptr || pf == nullptr) builder.SetInsertPoint(out);
     }
     else{
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
@@ -221,7 +233,9 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        builder.CreateBr(out);
+        auto pt = trueBranch->getTerminator();
+
+        if(pt == nullptr) builder.CreateBr(out); // not returned inside the block
         
         builder.SetInsertPoint(out);
     }
