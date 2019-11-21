@@ -5,7 +5,7 @@ using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
-#define LOAD(type, ret) builder.CreateLoad(type, ret);
+#define LOAD(type, ret) builder.CreateLoad(type, ret, "tmp");
 
 // You can define global variables here
 // to store state
@@ -15,6 +15,8 @@ Type * retType;
 
 //store function for creating basic block
 Function * currentFunc;
+
+bool flag_return = false;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -204,9 +206,8 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        auto pt = trueBranch->getTerminator();
-
-        if(pt == nullptr){ // not returned inside the block
+        
+        if(flag_return == false){ // not returned inside the block
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
@@ -214,14 +215,13 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         // falseBB
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
-        auto pf = falseBranch->getTerminator();
 
-        if(pf == nullptr){ // not returned inside the block
-            if (pt != nullptr) out->insertInto(currentFunc);
+        if(flag_return == false){ // not returned inside the block
+            out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        
-        if(pt == nullptr || pf == nullptr) builder.SetInsertPoint(out);
+        std::cout<<"enter selection out"<<std::endl;
+        if(flag_return == false) builder.SetInsertPoint(out);
     }
     else{
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
@@ -230,10 +230,10 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        auto pt = trueBranch->getTerminator();
 
-        if(pt == nullptr) builder.CreateBr(out); // not returned inside the block
+        if(flag_return == false) builder.CreateBr(out); // not returned inside the block
         
+        std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
     }
 }
@@ -266,9 +266,10 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
        node.expression.get() -> accept(*this);
        Type* TYPE32 = Type::getInt32Ty(context);
-       auto retLoad = builder.CreateLoad(TYPE32, ret);
+       auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
        builder.CreateRet(retLoad);
     }
+    flag_return = true;
 }
 
 void CminusBuilder::visit(syntax_var &node) {
@@ -316,7 +317,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
     if(node.additive_expression_r != nullptr){
         // lValue: 必须先load
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto lValue = builder.CreateLoad(TYPE32, ret);
+        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -368,7 +369,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
         if(ret->getType() == TY32Ptr){
-            lValue = builder.CreateLoad(TYPE32, ret);
+            lValue = builder.CreateLoad(TYPE32, ret, "tmp");
         }
         else lValue = ret;
 
@@ -403,7 +404,8 @@ void CminusBuilder::visit(syntax_term &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
 
         node.term.get()-> accept(*this);
-        auto lValue = LOAD(TYPE32, ret);
+        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        // auto lValue = LOAD(TYPE32, ret);
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
