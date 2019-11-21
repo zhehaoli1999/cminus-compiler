@@ -14,6 +14,8 @@ Value * ret;
 Type * retType;
 // ConstantAggregateZero
 
+//store function for creating basic block
+Function * currentFunc;
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
@@ -102,6 +104,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
+    currentFunc = funcFF;
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -135,6 +138,12 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
+    if(node.type == TYPE_VOID){
+        builder.CreateRet(nullptr);
+    }
+    else{
+        builder.CreateRet(CONST(0));
+    }
     scope.exit();
     // for later unction-call
     scope.push(node.id, funcFF);
@@ -188,10 +197,42 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
+    // selection-stmt→ ​if ( expression ) statement∣ if ( expression ) statement else statement​
+    std::cout<<"enter selection statement"<<std::endl;
+    node.expression->accept(*this);
+    Type* TYPE32 = Type::getInt32Ty(context);
+    if(node.else_statement != nullptr){
+        auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
+        auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
+        auto out = BasicBlock::Create(context, "outif", currentFunc);
+        builder.CreateCondBr(ret,trueBranch,falseBranch);
+        // tureBB
+        builder.SetInsertPoint(trueBranch);
+        node.if_statement->accept(*this);
+        builder.CreateBr(out);
+        // falseBB
+        builder.SetInsertPoint(falseBranch);
+        node.else_statement->accept(*this);
+        builder.CreateBr(out);
 
+        builder.SetInsertPoint(out);
+    }
+    else{
+        auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
+        auto out = BasicBlock::Create(context, "outif", currentFunc);
+        builder.CreateCondBr(ret,trueBranch,out);
+        // tureBB
+        builder.SetInsertPoint(trueBranch);
+        node.if_statement->accept(*this);
+        builder.CreateBr(out);
+        
+        builder.SetInsertPoint(out);
+    }
 }
 
-void CminusBuilder::visit(syntax_iteration_stmt &node) {}
+void CminusBuilder::visit(syntax_iteration_stmt &node) {
+    
+}
 
 void CminusBuilder::visit(syntax_return_stmt &node) {
     std::cout<<"enter return"<<std::endl;
