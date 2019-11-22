@@ -204,24 +204,32 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        auto pt = trueBranch->getTerminator();
-
-        if(pt == nullptr){ // not returned inside the block
+        int insertedFlag = 0;
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            //std::cout<<"not returned\n"<<std::endl;
+            insertedFlag = 1;
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
+        // else
+        //     //std::cout<<pt->getOpcode()<<std::endl;
+        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
 
         // falseBB
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
         auto pf = falseBranch->getTerminator();
 
-        if(pf == nullptr){ // not returned inside the block
-            if (pt != nullptr) out->insertInto(currentFunc);
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            if (!insertedFlag){
+                out->insertInto(currentFunc);
+                insertedFlag = 1;
+            }
             builder.CreateBr(out);
         }
         
-        if(pt == nullptr || pf == nullptr) builder.SetInsertPoint(out);
+        if(insertedFlag) builder.SetInsertPoint(out);
     }
     else{
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
@@ -232,7 +240,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         node.if_statement->accept(*this);
         auto pt = trueBranch->getTerminator();
 
-        if(pt == nullptr) builder.CreateBr(out); // not returned inside the block
+        if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
         
         builder.SetInsertPoint(out);
     }
@@ -249,7 +257,6 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
     
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
-    //auto retload = builder.CreateLoad(TYPE1,ret);
     builder.CreateCondBr(ret, loopBody, out);
 
     builder.SetInsertPoint(loopBody);

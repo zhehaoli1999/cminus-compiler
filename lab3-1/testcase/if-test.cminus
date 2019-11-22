@@ -1,12 +1,18 @@
-void main(void){
+int main(void){
   int a;
   a = 10;
-  if(a > 1)
+  if(a > 1){
     a = 4;
-    if(a > 2)
+    if(a > 2){
         a = 3;
-    else 
+	
+    }
+    else{
         a = 2;
+	
+    }
+  }
   else
     a = 1;
+  return a;
 }
