@@ -1,10 +1,19 @@
 int main(void){
   int a;
   a = 10;
+  
   if(a > 1){
       a = 2;
   } else {
       a = 3;
   }
+  
   return a;
 }
+/* void main(void){
+    call(10, 20);
+   int a;       /* int a = 10; 是错的，不符合C-语法
+   a = 10;
+   a = a < 2 ;
+   return ;
+} */

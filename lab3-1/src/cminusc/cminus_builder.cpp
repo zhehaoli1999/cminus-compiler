@@ -24,6 +24,8 @@ void CminusBuilder::visit(syntax_program &node) {
     for(auto d : node.declarations){
         d->accept(*this);
     }
+    builder.ClearInsertionPoint();
+
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
@@ -165,7 +167,6 @@ void CminusBuilder::visit(syntax_param &node) {
             // void
             // std::cout<<"[ERR]Variable void"<<std::endl;
     }
-    std::cout<<"exit param"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_compound_stmt &node) {
@@ -181,8 +182,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
     std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
     for(auto s : node.statement_list){
         s->accept(*this);
-    }
-
+    }  
 }
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
@@ -202,13 +202,14 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        
+        out->insertInto(currentFunc);
+
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         
+
         if(flag_return == false){ // not returned inside the block
-            out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
 
@@ -217,9 +218,11 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         node.else_statement->accept(*this);
 
         if(flag_return == false){ // not returned inside the block
-            out->insertInto(currentFunc);
+            std::cout<<"no return inside"<<std::endl;
+            // out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
+
         std::cout<<"enter selection out"<<std::endl;
         if(flag_return == false) builder.SetInsertPoint(out);
     }
@@ -231,7 +234,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
 
-        if(flag_return == false) builder.CreateBr(out); // not returned inside the block
+        builder.CreateBr(out); // not returned inside the block
         
         std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
@@ -273,6 +276,7 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_var &node) {
+    std::cout<<"enter var"<<node.id<<std::endl;
     auto var = scope.find(node.id);
     if(var){
         // 普通变量
@@ -287,7 +291,8 @@ void CminusBuilder::visit(syntax_var &node) {
     }
     else{
         std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
-    }  
+    }
+    std::cout<<"out var"<<node.id<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
