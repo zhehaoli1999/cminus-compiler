@@ -277,9 +277,7 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
-        std::cout<<"!!!"<<std::endl;
         node.expression.get() -> accept(*this);
-        std::cout<<"!!"<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
         builder.CreateRet(retLoad);
@@ -453,32 +451,63 @@ void CminusBuilder::visit(syntax_term &node) {
     }
 }
 
+// void CminusBuilder::visit(syntax_call &node) {
+//     std::cout<<"enter call"<<std::endl;
+//     auto fAlloc = scope.find(node.id);
+//     std::cout<<node.id<<std::endl;
+//     if(fAlloc == nullptr){
+//         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
+//     } else {
+//         std::vector<Value *> funargs;
+//         for(auto expr : node.args){
+//             expr->accept(*this);
+//             funargs.push_back(ret); 
+//        }
+//         Type* TYPE32 = Type::getInt32Ty(context);
+//         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+//         // auto fload = builder.CreateLoad(fAlloc);
+//         if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
+//             auto i32Zero = CONST(0);
+//             Value* indices[2] = {i32Zero,i32Zero};
+//             std::cout<<"hi!!!!"<<std::endl;
+//             auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
+//             // fcall = builder.CreateGEP(fAlloc,i32Zero); 
+//             builder.CreateCall(fAlloc, funargs);
+//         }
+//         else{
+//             builder.CreateCall(fAlloc, funargs);
+//         } 
+//     }
+// }
+
 void CminusBuilder::visit(syntax_call &node) {
     std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
-    std::cout<<node.id<<std::endl;
+    Type* TYPE32 = Type::getInt32Ty(context);
+    auto TYPEARRAY = ArrayType::getInt32Ty(context);
     if(fAlloc == nullptr){
         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
     } else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
+            std::cout<<"enter param"<<std::endl;
             expr->accept(*this);
-            funargs.push_back(ret); 
-       }
-        Type* TYPE32 = Type::getInt32Ty(context);
-        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
-        // auto fload = builder.CreateLoad(fAlloc);
-        if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
-            auto i32Zero = CONST(0);
-            Value* indices[2] = {i32Zero,i32Zero};
-            std::cout<<"hi!!!!"<<std::endl;
-            auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
-            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
-            builder.CreateCall(fAlloc, funargs);
+            // if the param is int just load the value and pass it into the funciton
+            // if the param is array pass the first value's type into the paramsret->getType()
+            // FIXME: the problem is processed by syntax_node, how to know it is an array or an int param?
+            if(ret->getType() == TYPE32){
+                std::cout<<"int param"<<std::endl;
+                auto vLoad = LOAD(TYPE32, ret);
+                funargs.push_back(vLoad);
+            } else{
+                std::cout<<"array param"<<std::endl;
+                auto i32Zero = CONST(0);
+                Value* indices[2] = {i32Zero,i32Zero};
+                auto ptr_value = builder.CreateInBoundsGEP(ret, ArrayRef<Value*>(indices, 2));
+                funargs.push_back(ptr_value);
+            }
+            std::cout<<"out param"<<std::endl;
         }
-        else{
-            builder.CreateCall(fAlloc, funargs);
-        } 
+        builder.CreateCall(fAlloc, funargs);
     }
 }
-
