@@ -1,14 +1,12 @@
-/*
-int call(int a[], int b){
-    return a[0];
+int call(int a[], int b[],int n){
+    return b[n];
 }
-*/
 
 int main(void){
-   int a[10];       /* int a = 10; 是错的，不符合C-语法*/
+   int a[10];
+   int b[5];
+   b[1] = 1;
    a[0] = 10;
-   a[2] = 0;
-   a[2] = a[2] < 2 ;
-   /*return call(a, 10);*/
-   return a[2];
+   b[2] = (b[1] + 5) * 2; 
+   return call(a,b,2);
 }
