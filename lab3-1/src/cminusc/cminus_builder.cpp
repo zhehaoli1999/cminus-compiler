@@ -15,14 +15,10 @@ bool isParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
-Function * currentFunc;
-struct array{
-    std::string id;
-    Value* a;
-    int len;
-};
+int number;
 
-std::vector<struct array> arrayList;
+// std::vector<struct array> arrayList;
+Function * currentFunc;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -58,6 +54,8 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType); 
             scope.push(node.id,lArrayAlloc);
+            // 存储数组长度：
+            scope.push(node.id+"_len",CONST(node.num->value));
         } 
         else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
@@ -139,6 +137,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
                 std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
+                exit(0);
             } else {
                 std::cout<<"enter store value"<<std::endl;
                 builder.CreateStore(args_value[i++], pAlloc);
@@ -290,30 +289,52 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_var &node) {
+
     std::cout<<"enter var:"<<node.id<<std::endl;
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto var = scope.find(node.id);
+   
     if(var){
-        // 普通变量
+        // 如果是 1.普通变量 或者 2. call() 语句中的参数（这就可能是数组指针）
         if(!node.expression){
+            // 如果是2. call() 语句中的参数，要转为 int*
             if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
                 isParam = 0;
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,i32Zero};
-                std::cout<<"hi!!!!"<<std::endl;
                 ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
-            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
             }
-            else if(isParam == 1){ ret = builder.CreateLoad(var); isParam = 0; }
+            // 如果是函数传参，就先load
+            else if(isParam == 1 && var->getType() == TY32Ptr){
+                ret = builder.CreateLoad(var); 
+                isParam = 0; 
+                }
+            // 1. 普通变量的情况
             else ret = var;
         }
-        // 数组变量
+        // 普通数组变量的情况
         else{
             node.expression.get()->accept(*this);
             auto num = ret;  // num can be a variable, not only integer
+            int64_t numValue, bound;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
+            
+            // 从 ConstantInt 类型中获取 origin value,判断越界
+            if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
+                if (CI->getBitWidth() <= 32) {
+                    numValue = CI->getSExtValue();
+                    bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
+                }
+                if (numValue < 0 || numValue >= bound ) // neg_idx_except();
+                {
+                    std::cout<<"[ERR] index exception."<<std::endl;
+                    exit(0);
+                }
+            }
+            // 看clang的，将i32转为i64
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
+            
             Value* arrayPtr;
             auto varLoad = builder.CreateLoad(var);
             if(varLoad->getType() == TY32Ptr){
@@ -324,14 +345,12 @@ void CminusBuilder::visit(syntax_var &node) {
                 Value* indices[2] = {i32Zero,num};
                 arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
             }              
-            // auto arrayPtr = builder.CreateInBoundsGEP(var,num);      
-
             ret = arrayPtr;
-            // TODO: array overflow
         } 
     }
     else{
         std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
+        exit(0);
     }
     std::cout<<"out var"<<node.id<<std::endl;
 }
@@ -478,7 +497,9 @@ void CminusBuilder::visit(syntax_call &node) {
     std::cout<<node.id<<std::endl;
     if(fAlloc == nullptr){
         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
-    } else {
+        exit(0);
+    } 
+    else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
             isParam = 1;
