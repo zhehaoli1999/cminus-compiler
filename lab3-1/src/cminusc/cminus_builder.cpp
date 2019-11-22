@@ -16,7 +16,13 @@ bool isParam = 0;
 
 //store function for creating basic block
 Function * currentFunc;
+struct array{
+    std::string id;
+    Value* a;
+    int len;
+};
 
+std::vector<struct array> arrayList;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -50,12 +56,7 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
 
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
-            auto lArrayAlloc = builder.CreateAlloca(arrayType);
-            // auto lArrayAlloc = builder.CreateGEP
-            // auto lArrayPtr = builder.CreateIntCast(lArrayAlloc, Type::getInt32Ty(context), true);
-            // builder.CreateStore(lArrayAlloc, CONST(0));
-            
-            // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
+            auto lArrayAlloc = builder.CreateAlloca(arrayType); 
             scope.push(node.id,lArrayAlloc);
         } 
         else{
@@ -314,15 +315,14 @@ void CminusBuilder::visit(syntax_var &node) {
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
             Value* arrayPtr;
-            auto load = builder.CreateLoad(var);
-            // TODO
-            if(load->getType() == TY32Ptr){
-                arrayPtr = builder.CreateInBoundsGEP(load,num); 
+            auto varLoad = builder.CreateLoad(var);
+            if(varLoad->getType() == TY32Ptr){
+                arrayPtr = builder.CreateInBoundsGEP(varLoad,num); 
             }
             else{
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,num};
-                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));    
+                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
             }              
             // auto arrayPtr = builder.CreateInBoundsGEP(var,num);      
 
@@ -361,9 +361,11 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
 
     // 按照 simple-expression → additive-expression relop additive- expression
     if(node.additive_expression_r != nullptr){
-        // lValue: 必须先load
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto lValue = builder.CreateLoad(TYPE32, ret);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
+        else lValue = ret;
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
