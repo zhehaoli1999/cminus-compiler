@@ -1,5 +1,6 @@
 int main(void){
   int a;
+  int b;
   a = 10;
   if(a > 1){
     a = 2;
@@ -7,14 +8,7 @@ int main(void){
   }
   else{
     a = 5;
-    return a;
-  }
-  if(a > 1){
-    a = 2;
-  }
-  else{
-    a = 5;
-    return a;
+    return b;
   }
   if(a > 1){
     a = 2;
