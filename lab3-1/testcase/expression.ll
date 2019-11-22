@@ -14,17 +14,17 @@ entry:
   %1 = alloca i32
   store i32 2, i32* %0
   store i32 3, i32* %1
-  %2 = load i32, i32* %0
-  %3 = icmp sgt i32 %2, 4
-  %4 = sext i1 %3 to i32
-  store i32 %4, i32* %0
-  %5 = load i32, i32* %1
-  %6 = udiv i32 %5, 1
+  %tmp = load i32, i32* %0
+  %2 = icmp sgt i32 %tmp, 4
+  %3 = sext i1 %2 to i32
+  store i32 %3, i32* %0
+  %tmp1 = load i32, i32* %1
+  %4 = udiv i32 %tmp1, 1
+  store i32 %4, i32* %1
+  %tmp2 = load i32, i32* %1
+  %5 = mul nsw i32 %tmp2, 2
+  %6 = add nsw i32 %5, 1
   store i32 %6, i32* %1
-  %7 = load i32, i32* %1
-  %8 = mul nsw i32 %7, 2
-  %9 = add nsw i32 %8, 1
-  store i32 %9, i32* %1
-  %10 = load i32, i32* %1
-  ret i32 %10
+  %tmp3 = load i32, i32* %1
+  ret i32 %tmp3
 }

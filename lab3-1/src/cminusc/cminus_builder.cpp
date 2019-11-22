@@ -11,6 +11,7 @@ using namespace llvm;
 // to store state
 Value * ret;
 Type * retType;
+bool isParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
@@ -279,29 +280,42 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
-        std::cout<<"!!!"<<std::endl;
         node.expression.get() -> accept(*this);
-        std::cout<<"!!"<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
-        builder.CreateRet(retLoad);
+        if(ret->getType() == TYPE32) builder.CreateRet(ret);
+        else{
+            auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
+            builder.CreateRet(retLoad);
+        }
     }
     flag_return = true;
 }
 
 void CminusBuilder::visit(syntax_var &node) {
     std::cout<<"enter var:"<<node.id<<std::endl;
+    Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+    Type* TYPE32 = Type::getInt32Ty(context);
     auto var = scope.find(node.id);
     if(var){
         // 普通变量
-        if(!node.expression) ret = var;
+        if(!node.expression){
+            if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
+                isParam = 0;
+                auto i32Zero = CONST(0);
+                Value* indices[2] = {i32Zero,i32Zero};
+                std::cout<<"hi!!!!"<<std::endl;
+                ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
+            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
+            }
+            else if(isParam == 1){ ret = builder.CreateLoad(var); isParam = 0; }
+            else ret = var;
+        }
         // 数组变量
         else{
             node.expression.get()->accept(*this);
-            auto num = ret; 
-            Type* TY32Ptr= PointerType::getInt32PtrTy(context);
-            // Type* TY32PtrPtr = PointerType::getP
-            Type* TYPE32 = Type::getInt32Ty(context);
+            auto num = ret;  // num can be a variable, not only integer
+            if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
+            num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
             Value* arrayPtr;
             auto load = builder.CreateLoad(var);
             // TODO
@@ -436,10 +450,12 @@ void CminusBuilder::visit(syntax_term &node) {
     // 按照 term -> term mulop factor
     else {
         Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
 
         node.term.get()-> accept(*this);
-        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
-        // auto lValue = LOAD(TYPE32, ret);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        else lValue = ret;
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
@@ -465,23 +481,13 @@ void CminusBuilder::visit(syntax_call &node) {
     } else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
+            isParam = 1;
             expr->accept(*this);
             funargs.push_back(ret); 
        }
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
-        // auto fload = builder.CreateLoad(fAlloc);
-        if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
-            auto i32Zero = CONST(0);
-            Value* indices[2] = {i32Zero,i32Zero};
-            std::cout<<"hi!!!!"<<std::endl;
-            auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
-            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
-            builder.CreateCall(fAlloc, funargs);
-        }
-        else{
-            builder.CreateCall(fAlloc, funargs);
-        } 
+        ret = builder.CreateCall(fAlloc, funargs);
     }
 }
 
