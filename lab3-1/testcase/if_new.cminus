@@ -1,10 +1,16 @@
 int main(void){
   int a;
-  a = 0;
+  a = 10;
   if(a > 1){
     a = 2;
     if(a > 1){
       a = 3;
+      if(a > 1){
+        a = 11;
+      } else{
+        a = 12;
+        return a;
+      }
     } else{
       a = 4;
       return a;

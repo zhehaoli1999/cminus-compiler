@@ -16,9 +16,6 @@ Type * retType;
 //store function for creating basic block
 Function * currentFunc;
 
-bool ift_return = false; // flag for true branch
-bool iff_return = false; // flag for false branch
-bool flag_return = false; // flag for return node
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -204,10 +201,9 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        out->insertInto(currentFunc);
+        // out->insertInto(currentFunc);
 
         // tureBB
-        flag_return = false;
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         int insertedFlag = 0;
@@ -221,10 +217,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         //     //std::cout<<pt->getOpcode()<<std::endl;
         //     builder.CreateBr(pt->getSuccessor(1)) ;
         
-
-        ift_return = false;
         // falseBB
-        iff_return = false;
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
 
@@ -243,7 +236,6 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto out = BasicBlock::Create(context, "outif", currentFunc);
         builder.CreateCondBr(ret,trueBranch,out);
         // tureBB
-        ift_return = false;
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
 
@@ -251,7 +243,6 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         
         std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
-        ift_return = false;
     }
 }
 
@@ -282,10 +273,9 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
        node.expression.get() -> accept(*this);
        Type* TYPE32 = Type::getInt32Ty(context);
-       auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
+       auto retLoad = builder.CreateLoad(TYPE32, ret);
        builder.CreateRet(retLoad);
     }
-    flag_return = true;
 }
 
 void CminusBuilder::visit(syntax_var &node) {
@@ -300,6 +290,7 @@ void CminusBuilder::visit(syntax_var &node) {
             auto num = ret; 
             auto arrayPtr = builder.CreateGEP(var,num);
             ret = arrayPtr;
+            // TODO: array overflow
         } 
     }
     else{
@@ -335,7 +326,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
     if(node.additive_expression_r != nullptr){
         // lValue: 必须先load
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        auto lValue = builder.CreateLoad(TYPE32, ret);
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -387,7 +378,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
         if(ret->getType() == TY32Ptr){
-            lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+            lValue = builder.CreateLoad(TYPE32, ret);
         }
         else lValue = ret;
 
@@ -422,8 +413,7 @@ void CminusBuilder::visit(syntax_term &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
 
         node.term.get()-> accept(*this);
-        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
-        // auto lValue = LOAD(TYPE32, ret);
+        auto lValue = LOAD(TYPE32, ret);
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
