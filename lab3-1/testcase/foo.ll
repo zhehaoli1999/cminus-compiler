@@ -15,17 +15,15 @@ entry:
   store i32 %0, i32* %2
   store i32 %1, i32* %3
   ret void
-  ret void
 }
 
 define void @main() {
 entry:
   %0 = alloca i32
   store i32 10, i32* %0
-  %1 = load i32, i32* %0
-  %2 = icmp slt i32 %1, 2
-  %3 = sext i1 %2 to i32
-  store i32 %3, i32* %0
-  ret void
+  %tmp = load i32, i32* %0
+  %1 = icmp slt i32 %tmp, 2
+  %2 = sext i1 %1 to i32
+  store i32 %2, i32* %0
   ret void
 }
