@@ -5,7 +5,12 @@ int main(void){
     a = 2;
     if(a > 1){
       a = 3;
-      return a;
+      if(a > 1){
+        a = 11;
+      } else{
+        a = 12;
+        return a;
+      }
     } else{
       a = 4;
       return a;
