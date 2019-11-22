@@ -16,7 +16,9 @@ Type * retType;
 //store function for creating basic block
 Function * currentFunc;
 
-bool flag_return = false;
+bool ift_return = false; // flag for true branch
+bool iff_return = false; // flag for false branch
+bool flag_return = false; // flag for return node
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -205,6 +207,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         out->insertInto(currentFunc);
 
         // tureBB
+        flag_return = false;
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         
@@ -212,25 +215,29 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         if(flag_return == false){ // not returned inside the block
             builder.CreateBr(out);
         }
+        ift_return = flag_return;
 
+        ift_return = false;
         // falseBB
+        iff_return = false;
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
 
-        if(flag_return == false){ // not returned inside the block
-            std::cout<<"no return inside"<<std::endl;
-            // out->insertInto(currentFunc);
+        if(iff_return == false){ // not returned inside the block
             builder.CreateBr(out);
         }
 
         std::cout<<"enter selection out"<<std::endl;
-        if(flag_return == false) builder.SetInsertPoint(out);
+        // set insert point whatever...
+        if(iff_return == false || ift_return == false) builder.SetInsertPoint(out);
+        iff_return = false;
     }
     else{
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif", currentFunc);
         builder.CreateCondBr(ret,trueBranch,out);
         // tureBB
+        ift_return = false;
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
 
@@ -238,6 +245,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         
         std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
+        ift_return = false;
     }
 }
 
