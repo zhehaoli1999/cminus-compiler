@@ -210,12 +210,17 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         flag_return = false;
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
-        
-
-        if(flag_return == false){ // not returned inside the block
+        int insertedFlag = 0;
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            //std::cout<<"not returned\n"<<std::endl;
+            insertedFlag = 1;
+            out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        ift_return = flag_return;
+        // else
+        //     //std::cout<<pt->getOpcode()<<std::endl;
+        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
 
         ift_return = false;
         // falseBB
@@ -223,14 +228,15 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         builder.SetInsertPoint(falseBranch);
         node.else_statement->accept(*this);
 
-        if(iff_return == false){ // not returned inside the block
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            if (!insertedFlag){
+                out->insertInto(currentFunc);
+                insertedFlag = 1;
+            }
             builder.CreateBr(out);
         }
-
-        std::cout<<"enter selection out"<<std::endl;
-        // set insert point whatever...
-        if(iff_return == false || ift_return == false) builder.SetInsertPoint(out);
-        iff_return = false;
+        
+        if(insertedFlag) builder.SetInsertPoint(out);
     }
     else{
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
@@ -241,7 +247,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
 
-        builder.CreateBr(out); // not returned inside the block
+        if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
         
         std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
@@ -260,7 +266,6 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
     
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
-    //auto retload = builder.CreateLoad(TYPE1,ret);
     builder.CreateCondBr(ret, loopBody, out);
 
     builder.SetInsertPoint(loopBody);
