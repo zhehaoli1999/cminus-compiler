@@ -11,11 +11,18 @@ using namespace llvm;
 // to store state
 Value * ret;
 Type * retType;
+bool isParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
 Function * currentFunc;
+struct array{
+    std::string id;
+    Value* a;
+    int len;
+};
 
+std::vector<struct array> arrayList;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -49,12 +56,7 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
 
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
-            auto lArrayAlloc = builder.CreateAlloca(arrayType);
-            // auto lArrayAlloc = builder.CreateGEP
-            // auto lArrayPtr = builder.CreateIntCast(lArrayAlloc, Type::getInt32Ty(context), true);
-            // builder.CreateStore(lArrayAlloc, CONST(0));
-            
-            // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
+            auto lArrayAlloc = builder.CreateAlloca(arrayType); 
             scope.push(node.id,lArrayAlloc);
         } 
         else{
@@ -279,34 +281,48 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
         node.expression.get() -> accept(*this);
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
-        builder.CreateRet(retLoad);
+        if(ret->getType() == TYPE32) builder.CreateRet(ret);
+        else{
+            auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
+            builder.CreateRet(retLoad);
+        }
     }
 }
 
 void CminusBuilder::visit(syntax_var &node) {
     std::cout<<"enter var:"<<node.id<<std::endl;
+    Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+    Type* TYPE32 = Type::getInt32Ty(context);
     auto var = scope.find(node.id);
     if(var){
         // 普通变量
-        if(!node.expression) ret = var;
+        if(!node.expression){
+            if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
+                isParam = 0;
+                auto i32Zero = CONST(0);
+                Value* indices[2] = {i32Zero,i32Zero};
+                std::cout<<"hi!!!!"<<std::endl;
+                ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
+            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
+            }
+            else if(isParam == 1){ ret = builder.CreateLoad(var); isParam = 0; }
+            else ret = var;
+        }
         // 数组变量
         else{
             node.expression.get()->accept(*this);
-            auto num = ret; 
-            Type* TY32Ptr= PointerType::getInt32PtrTy(context);
-            // Type* TY32PtrPtr = PointerType::getP
-            Type* TYPE32 = Type::getInt32Ty(context);
+            auto num = ret;  // num can be a variable, not only integer
+            if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
+            num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
             Value* arrayPtr;
-            auto load = builder.CreateLoad(var);
-            // TODO
-            if(load->getType() == TY32Ptr){
-                arrayPtr = builder.CreateInBoundsGEP(load,num); 
+            auto varLoad = builder.CreateLoad(var);
+            if(varLoad->getType() == TY32Ptr){
+                arrayPtr = builder.CreateInBoundsGEP(varLoad,num); 
             }
             else{
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,num};
-                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));    
+                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
             }              
             // auto arrayPtr = builder.CreateInBoundsGEP(var,num);      
 
@@ -345,9 +361,11 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
 
     // 按照 simple-expression → additive-expression relop additive- expression
     if(node.additive_expression_r != nullptr){
-        // lValue: 必须先load
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto lValue = builder.CreateLoad(TYPE32, ret);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
+        else lValue = ret;
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -432,9 +450,12 @@ void CminusBuilder::visit(syntax_term &node) {
     // 按照 term -> term mulop factor
     else {
         Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
 
         node.term.get()-> accept(*this);
-        auto lValue = LOAD(TYPE32, ret);
+        Value* lValue;
+        if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        else lValue = ret;
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
@@ -490,24 +511,12 @@ void CminusBuilder::visit(syntax_call &node) {
     } else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
-            std::cout<<"enter param"<<std::endl;
+            isParam = 1;
             expr->accept(*this);
-            // if the param is int just load the value and pass it into the funciton
-            // if the param is array pass the first value's type into the paramsret->getType()
-            // FIXME: the problem is processed by syntax_node, how to know it is an array or an int param?
-            if(ret->getType() == TYPE32){
-                std::cout<<"int param"<<std::endl;
-                auto vLoad = LOAD(TYPE32, ret);
-                funargs.push_back(vLoad);
-            } else{
-                std::cout<<"array param"<<std::endl;
-                auto i32Zero = CONST(0);
-                Value* indices[2] = {i32Zero,i32Zero};
-                auto ptr_value = builder.CreateInBoundsGEP(ret, ArrayRef<Value*>(indices, 2));
-                funargs.push_back(ptr_value);
-            }
-            std::cout<<"out param"<<std::endl;
-        }
-        builder.CreateCall(fAlloc, funargs);
+            funargs.push_back(ret); 
+       }
+        Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        ret = builder.CreateCall(fAlloc, funargs);
     }
 }

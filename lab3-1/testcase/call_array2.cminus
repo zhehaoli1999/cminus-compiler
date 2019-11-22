@@ -8,5 +8,6 @@ int main(void){
    b[1] = 1;
    a[0] = 10;
    b[2] = (b[1] + 5) * 2; 
-   return call(a,b,2);
+   if (a[0] < 5) return call(a,b,2);
+   else return call(a,b,1);
 }

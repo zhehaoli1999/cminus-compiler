@@ -1,5 +1,5 @@
 ; ModuleID = 'cminus'
-source_filename = "../testcase/call_array.cminus"
+source_filename = "../testcase/call_array2.cminus"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 
 declare i32 @input()
@@ -42,8 +42,23 @@ entry:
   %10 = add nsw i32 %tmp, 5
   %11 = mul nsw i32 %10, 2
   store i32 %11, i32* %7
-  %12 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
-  %13 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
-  %14 = call i32 @call(i32* %12, i32* %13, i32 2)
-  ret i32 %14
+  %12 = load [10 x i32], [10 x i32]* %0
+  %13 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i64 0
+  %tmp1 = load i32, i32* %13
+  %14 = icmp slt i32 %tmp1, 5
+  br i1 %14, label %trueBranch, label %falseBranch
+
+trueBranch:                                       ; preds = %entry
+  %15 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %16 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
+  %17 = call i32 @call(i32* %15, i32* %16, i32 2)
+  ret i32 %17
+
+falseBranch:                                      ; preds = %entry
+  %18 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %19 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
+  %20 = call i32 @call(i32* %18, i32* %19, i32 1)
+  ret i32 %20
+
+outif:                                            ; No predecessors!
 }
