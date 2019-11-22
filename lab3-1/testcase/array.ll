@@ -11,11 +11,11 @@ declare void @neg_idx_except()
 define i32 @main() {
 entry:
   %0 = alloca [10 x i32]
-  %1 = alloca i32
-  %2 = getelementptr [10 x i32], [10 x i32]* %0, i32 0
-  store i32 1, [10 x i32]* %2
-  %3 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  store i32 5, [10 x i32]* %3
-  %4 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  ret [10 x i32]* %4
+  %1 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0
+  store i32 1, [10 x i32]* %1
+  %2 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 2
+  store i32 5, [10 x i32]* %2
+  %3 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 2
+  %4 = load i32, [10 x i32]* %3
+  ret i32 %4
 }

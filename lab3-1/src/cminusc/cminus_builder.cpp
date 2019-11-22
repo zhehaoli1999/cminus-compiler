@@ -30,7 +30,6 @@ void CminusBuilder::visit(syntax_num &node) {
 
 void CminusBuilder::visit(syntax_var_declaration &node) {
     // var-declaration →type-specifier ID ; ∣ type-specifier ID [ NUM ] ;
-
     // assert var can NOT be void type
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
@@ -46,6 +45,10 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType);
+            // auto lArrayAlloc = builder.CreateGEP
+            // auto lArrayPtr = builder.CreateIntCast(lArrayAlloc, Type::getInt32Ty(context), true);
+            // builder.CreateStore(lArrayAlloc, CONST(0));
+            
             // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
             scope.push(node.id,lArrayAlloc);
         } 
@@ -211,7 +214,8 @@ void CminusBuilder::visit(syntax_var &node) {
         else{
             node.expression.get()->accept(*this);
             auto num = ret; 
-            auto arrayPtr = builder.CreateGEP(var,num);
+            Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+            auto arrayPtr = builder.CreateInBoundsGEP( var, num);            
             ret = arrayPtr;
         } 
     }
