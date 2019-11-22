@@ -35,7 +35,6 @@ void CminusBuilder::visit(syntax_num &node) {
 
 void CminusBuilder::visit(syntax_var_declaration &node) {
     // var-declaration →type-specifier ID ; ∣ type-specifier ID [ NUM ] ;
-
     // assert var can NOT be void type
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
@@ -51,6 +50,10 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType);
+            // auto lArrayAlloc = builder.CreateGEP
+            // auto lArrayPtr = builder.CreateIntCast(lArrayAlloc, Type::getInt32Ty(context), true);
+            // builder.CreateStore(lArrayAlloc, CONST(0));
+            
             // AllocaInst* lArrayAlloc = new AllocaInst(arrayType,node.num->value);
             scope.push(node.id,lArrayAlloc);
         } 
@@ -91,13 +94,13 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
 
     // function parameters' type
     std::vector<Type *> args_type;
-
     // get params type
     // If params type is VOID, then assert there should not be other params and return args_type with null
     if(node.params.size() > 0){
         for(auto arg : node.params){
             if(arg->isarray){
                 //TODO: Should it push pointer type or array type
+                std::cout<<"Get Array!"<<std::endl;
                 args_type.push_back(TYPEARRAY_32);
             } else if(arg->type == TYPE_INT) {
                 // it must be int
@@ -111,10 +114,11 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
+
     std::cout<<"enter params declarations"<<std::endl;
     // Note that node.params are Syntrx Tree Node ptr, it can NOT be directly passed into function declaration list
     for(auto arg : node.params ) {
-        arg->accept(*this);
+        arg.get()->accept(*this);
     }
     // Note that it should be module.get() instead of module
     
@@ -158,8 +162,10 @@ void CminusBuilder::visit(syntax_param &node) {
         // assert that functions' parameters can NOT be global variables
         pAlloc = builder.CreateAlloca(TYPE32);
         scope.push(node.id, pAlloc);
+
     } else if (node.type == TYPE_INT && node.isarray){
         // array
+        std::cout<<"create array param"<<std::endl;
         pAlloc = builder.CreateAlloca(TYPEARRAY_32);
         scope.push(node.id, pAlloc);
     } else{
@@ -213,7 +219,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        // else
+        //  else
         //     //std::cout<<pt->getOpcode()<<std::endl;
         //     builder.CreateBr(pt->getSuccessor(1)) ;
         
@@ -271,15 +277,17 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
-       node.expression.get() -> accept(*this);
-       Type* TYPE32 = Type::getInt32Ty(context);
-       auto retLoad = builder.CreateLoad(TYPE32, ret);
-       builder.CreateRet(retLoad);
+        std::cout<<"!!!"<<std::endl;
+        node.expression.get() -> accept(*this);
+        std::cout<<"!!"<<std::endl;
+        Type* TYPE32 = Type::getInt32Ty(context);
+        auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
+        builder.CreateRet(retLoad);
     }
 }
 
 void CminusBuilder::visit(syntax_var &node) {
-    std::cout<<"enter var"<<node.id<<std::endl;
+    std::cout<<"enter var:"<<node.id<<std::endl;
     auto var = scope.find(node.id);
     if(var){
         // 普通变量
@@ -288,7 +296,22 @@ void CminusBuilder::visit(syntax_var &node) {
         else{
             node.expression.get()->accept(*this);
             auto num = ret; 
-            auto arrayPtr = builder.CreateGEP(var,num);
+            Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+            // Type* TY32PtrPtr = PointerType::getP
+            Type* TYPE32 = Type::getInt32Ty(context);
+            Value* arrayPtr;
+            auto load = builder.CreateLoad(var);
+            // TODO
+            if(load->getType() == TY32Ptr){
+                arrayPtr = builder.CreateInBoundsGEP(load,num); 
+            }
+            else{
+                auto i32Zero = CONST(0);
+                Value* indices[2] = {i32Zero,num};
+                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));    
+            }              
+            // auto arrayPtr = builder.CreateInBoundsGEP(var,num);      
+
             ret = arrayPtr;
             // TODO: array overflow
         } 
@@ -400,12 +423,12 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
 
 void CminusBuilder::visit(syntax_term &node) {
     // term → term mulop factor | factor
-    
     // 按照 term -> factor
     if(node.term == nullptr){
         // std::cout<<node.factor<<std::endl;
         std::cout<<"enter factor"<<std::endl;
-        node.factor->accept(*this);
+        if(node.factor != nullptr) 
+            node.factor->accept(*this);
     }
 
     // 按照 term -> term mulop factor
@@ -433,15 +456,29 @@ void CminusBuilder::visit(syntax_term &node) {
 void CminusBuilder::visit(syntax_call &node) {
     std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
+    std::cout<<node.id<<std::endl;
     if(fAlloc == nullptr){
         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
     } else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
             expr->accept(*this);
-            funargs.push_back(ret);
+            funargs.push_back(ret); 
+       }
+        Type* TYPE32 = Type::getInt32Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        // auto fload = builder.CreateLoad(fAlloc);
+        if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
+            auto i32Zero = CONST(0);
+            Value* indices[2] = {i32Zero,i32Zero};
+            std::cout<<"hi!!!!"<<std::endl;
+            auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
+            // fcall = builder.CreateGEP(fAlloc,i32Zero); 
+            builder.CreateCall(fAlloc, funargs);
         }
-        builder.CreateCall(fAlloc, funargs);
+        else{
+            builder.CreateCall(fAlloc, funargs);
+        } 
     }
 }
 
