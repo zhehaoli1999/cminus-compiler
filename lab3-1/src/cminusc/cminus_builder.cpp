@@ -15,14 +15,10 @@ bool isParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
-Function * currentFunc;
-struct array{
-    std::string id;
-    Value* a;
-    int len;
-};
+int number;
 
-std::vector<struct array> arrayList;
+// std::vector<struct array> arrayList;
+Function * currentFunc;
 
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
@@ -58,6 +54,7 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType); 
             scope.push(node.id,lArrayAlloc);
+            scope.push(node.id+"_len",CONST(node.num->value));
         } 
         else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
@@ -139,6 +136,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
                 std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
+                exit(0);
             } else {
                 std::cout<<"enter store value"<<std::endl;
                 builder.CreateStore(args_value[i++], pAlloc);
@@ -312,8 +310,21 @@ void CminusBuilder::visit(syntax_var &node) {
         else{
             node.expression.get()->accept(*this);
             auto num = ret;  // num can be a variable, not only integer
+            int64_t numValue, bound;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
+            if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
+                if (CI->getBitWidth() <= 32) {
+                    numValue = CI->getSExtValue();
+                    bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
+                }
+                if (numValue < 0 || numValue >= bound ) // neg_idx_except();
+                {
+                    std::cout<<"[ERR] index exception."<<std::endl;
+                    exit(0);
+                }
+            }
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
+            
             Value* arrayPtr;
             auto varLoad = builder.CreateLoad(var);
             if(varLoad->getType() == TY32Ptr){
@@ -324,14 +335,13 @@ void CminusBuilder::visit(syntax_var &node) {
                 Value* indices[2] = {i32Zero,num};
                 arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
             }              
-            // auto arrayPtr = builder.CreateInBoundsGEP(var,num);      
-
             ret = arrayPtr;
             // TODO: array overflow
         } 
     }
     else{
         std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
+        exit(0);
     }
     std::cout<<"out var"<<node.id<<std::endl;
 }
@@ -478,7 +488,9 @@ void CminusBuilder::visit(syntax_call &node) {
     std::cout<<node.id<<std::endl;
     if(fAlloc == nullptr){
         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
-    } else {
+        exit(0);
+    } 
+    else {
         std::vector<Value *> funargs;
         for(auto expr : node.args){
             isParam = 1;
