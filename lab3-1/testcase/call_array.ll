@@ -8,20 +8,27 @@ declare void @output(i32)
 
 declare void @neg_idx_except()
 
+define i32 @call(i32*, i32) {
+entry:
+  %2 = alloca i32*
+  %3 = alloca i32
+  store i32* %0, i32** %2
+  store i32 %1, i32* %3
+  %4 = load i32*, i32** %2
+  %5 = getelementptr inbounds i32, i32* %4, i32 0
+  %tmp = load i32, i32* %5
+  ret i32 %tmp
+}
+
 define i32 @main() {
 entry:
   %0 = alloca [10 x i32]
-  %1 = getelementptr [10 x i32], [10 x i32]* %0, i32 0
-  store i32 10, [10 x i32]* %1
-  %2 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  store i32 0, [10 x i32]* %2
-  %3 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  %4 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  %5 = load i32, [10 x i32]* %4
-  %6 = icmp slt i32 %5, 2
-  %7 = sext i1 %6 to i32
-  store i32 %7, [10 x i32]* %3
-  %8 = getelementptr [10 x i32], [10 x i32]* %0, i32 2
-  %9 = load i32, [10 x i32]* %8
-  ret i32 %9
+  %1 = alloca i32
+  store i32 1, i32* %1
+  %2 = load [10 x i32], [10 x i32]* %0
+  %3 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  store i32 10, i32* %3
+  %4 = call i32 @call([10 x i32]* %0, i32* %1)
+  %tmp = load i32, i32* %1
+  ret i32 %tmp
 }
