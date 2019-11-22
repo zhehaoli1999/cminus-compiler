@@ -202,7 +202,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        out->insertInto(currentFunc);
+        //out->insertInto(currentFunc);
 
         // tureBB
         builder.SetInsertPoint(trueBranch);
