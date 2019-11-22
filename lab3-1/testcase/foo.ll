@@ -9,7 +9,7 @@ declare void @output(i32)
 declare void @neg_idx_except()
 
 define void @call(i32, i32) {
-call:
+entry:
   %2 = alloca i32
   %3 = alloca i32
   store i32 %0, i32* %2
@@ -18,7 +18,12 @@ call:
 }
 
 define void @main() {
-main:
-  call void @call(i32 10, i32 20)
+entry:
+  %0 = alloca i32
+  store i32 10, i32* %0
+  %tmp = load i32, i32* %0
+  %1 = icmp slt i32 %tmp, 2
+  %2 = sext i1 %1 to i32
+  store i32 %2, i32* %0
   ret void
 }

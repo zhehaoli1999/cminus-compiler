@@ -1,12 +1,11 @@
 #include "cminus_builder.hpp"
 #include <llvm/IR/GlobalVariable.h>
 #include <iostream>
-
 using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
-#define LOAD(type, ret) builder.CreateLoad(type, ret);
+#define LOAD(type, ret) builder.CreateLoad(type, ret, "tmp");
 
 // You can define global variables here
 // to store state
@@ -14,12 +13,19 @@ Value * ret;
 Type * retType;
 // ConstantAggregateZero
 
+//store function for creating basic block
+Function * currentFunc;
+
+bool flag_return = false;
+
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
     for(auto d : node.declarations){
         d->accept(*this);
     }
+    builder.ClearInsertionPoint();
+
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
@@ -105,6 +111,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
+    currentFunc = funcFF;
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -163,21 +170,22 @@ void CminusBuilder::visit(syntax_param &node) {
             // void
             // std::cout<<"[ERR]Variable void"<<std::endl;
     }
-    std::cout<<"exit param"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_compound_stmt &node) {
     // accept local declarations
     // accept statementlist
-    for(auto ld : node.local_declarations){
+    if(node.local_declarations.size() > 0){
+        for(auto ld : node.local_declarations){
         // assert ld.type is INT
         ld->accept(*this);
+        }
     }
+    
     std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
     for(auto s : node.statement_list){
         s->accept(*this);
-    }
-
+    }  
 }
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
@@ -188,10 +196,80 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
+    // selection-stmt→ ​if ( expression ) statement∣ if ( expression ) statement else statement​
+    std::cout<<"enter selection statement"<<std::endl;
+    node.expression->accept(*this);
+    Type* TYPE32 = Type::getInt32Ty(context);
+    if(node.else_statement != nullptr){
+        auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
+        auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
+        auto out = BasicBlock::Create(context, "outif");
+        builder.CreateCondBr(ret,trueBranch,falseBranch);
+        out->insertInto(currentFunc);
 
+        // tureBB
+        builder.SetInsertPoint(trueBranch);
+        node.if_statement->accept(*this);
+        int insertedFlag = 0;
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            //std::cout<<"not returned\n"<<std::endl;
+            insertedFlag = 1;
+            out->insertInto(currentFunc);
+            builder.CreateBr(out);
+        }
+        // else
+        //     //std::cout<<pt->getOpcode()<<std::endl;
+        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
+
+        // falseBB
+        builder.SetInsertPoint(falseBranch);
+        node.else_statement->accept(*this);
+
+        if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
+            if (!insertedFlag){
+                out->insertInto(currentFunc);
+                insertedFlag = 1;
+            }
+            builder.CreateBr(out);
+        }
+        
+        if(insertedFlag) builder.SetInsertPoint(out);
+    }
+    else{
+        auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
+        auto out = BasicBlock::Create(context, "outif", currentFunc);
+        builder.CreateCondBr(ret,trueBranch,out);
+        // tureBB
+        builder.SetInsertPoint(trueBranch);
+        node.if_statement->accept(*this);
+
+        if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
+        
+        std::cout<<"enter selection out"<<std::endl;
+        builder.SetInsertPoint(out);
+    }
 }
 
-void CminusBuilder::visit(syntax_iteration_stmt &node) {}
+void CminusBuilder::visit(syntax_iteration_stmt &node) {
+    // iteration-stmt→while ( expression ) statement
+    std::cout<<"enter selection statement"<<std::endl;
+    auto loopJudge = BasicBlock::Create(context, "loopJudge", currentFunc);
+    auto loopBody = BasicBlock::Create(context, "loopBody", currentFunc);
+    auto out = BasicBlock::Create(context, "outloop", currentFunc);
+    Type* TYPE1 = Type::getInt1Ty(context);
+    builder.CreateBr(loopJudge);
+    
+    builder.SetInsertPoint(loopJudge);
+    node.expression->accept(*this);
+    builder.CreateCondBr(ret, loopBody, out);
+
+    builder.SetInsertPoint(loopBody);
+    node.statement->accept(*this);
+    builder.CreateBr(loopJudge);
+
+    builder.SetInsertPoint(out);
+}
 
 void CminusBuilder::visit(syntax_return_stmt &node) {
     std::cout<<"enter return"<<std::endl;
@@ -200,12 +278,14 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
        node.expression.get() -> accept(*this);
        Type* TYPE32 = Type::getInt32Ty(context);
-       auto retLoad = builder.CreateLoad(TYPE32, ret);
+       auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
        builder.CreateRet(retLoad);
     }
+    flag_return = true;
 }
 
 void CminusBuilder::visit(syntax_var &node) {
+    std::cout<<"enter var"<<node.id<<std::endl;
     auto var = scope.find(node.id);
     if(var){
         // 普通变量
@@ -221,7 +301,8 @@ void CminusBuilder::visit(syntax_var &node) {
     }
     else{
         std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
-    }  
+    }
+    std::cout<<"out var"<<node.id<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
@@ -251,7 +332,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
     if(node.additive_expression_r != nullptr){
         // lValue: 必须先load
         Type* TYPE32 = Type::getInt32Ty(context);
-        auto lValue = builder.CreateLoad(TYPE32, ret);
+        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
 
         node.additive_expression_r.get()->accept(*this);
         auto rValue = ret;
@@ -303,7 +384,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
         if(ret->getType() == TY32Ptr){
-            lValue = builder.CreateLoad(TYPE32, ret);
+            lValue = builder.CreateLoad(TYPE32, ret, "tmp");
         }
         else lValue = ret;
 
@@ -338,7 +419,8 @@ void CminusBuilder::visit(syntax_term &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
 
         node.term.get()-> accept(*this);
-        auto lValue = LOAD(TYPE32, ret);
+        auto lValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        // auto lValue = LOAD(TYPE32, ret);
         node.factor.get()->accept(*this);
         auto rValue = ret;
         Value* result;
