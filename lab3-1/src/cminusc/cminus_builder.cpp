@@ -151,6 +151,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     
     node.compound_stmt->accept(*this);
     std::cout<<"exit func declaration"<<std::endl;
+    scope.exit();
 }
 
 void CminusBuilder::visit(syntax_param &node) {
