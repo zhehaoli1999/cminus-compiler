@@ -36,6 +36,15 @@ int main(void){
    c = callmom((a[ d[ d[ d[1] ] ] ] > d[1]) * a[ d[ d[ d[1] ] ] ] + 1, b );
    c = callmom((a[ d[ d[ d[1] ] ] ] > d[1]) + a[ d[ d[ d[1] ] ] ] * 6, b );
 
-   c = a[ d[1] ];
+   if ((a[ d[ d[ d[1] ] ] ] > d[1]))  c = (a[ d[1] ] * d[1] ) + 10 - b;
+   else{
+        c = (a[ d[ d[ d[1] ] ] ] > d[1]) + a[ d[ d[ d[1] ] ] ] * 6;
+        if (b == 1) c = 0;
+        else return c;
+    }
+   while((a[ d[ d[ d[1] ] ] ] > b)){
+        b = b + 1;
+   }
+
    return callmom(a[ d[ d[ d[1] ] ] ] > d[1], b );;
 }
