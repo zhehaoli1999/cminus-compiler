@@ -282,6 +282,7 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
         node.expression.get() -> accept(*this);
         Type* TYPE32 = Type::getInt32Ty(context);
+        std::cout<<"enter return get type"<<std::endl;
         if(ret->getType() == TYPE32) builder.CreateRet(ret);
         else{
             auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
@@ -385,6 +386,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
+        
         if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
         else lValue = ret;
 
@@ -392,6 +394,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         auto rValue = ret;
 
         Value* icmp ;   
+        std::cout<<"enter get type"<<std::endl;
         switch (node.op)
         {
             case OP_LE:
@@ -538,6 +541,7 @@ void CminusBuilder::visit(syntax_call &node) {
             expr->accept(*this);
             funargs.push_back(ret); 
        }
+        std::cout<<"create call and return "<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         ret = builder.CreateCall(fAlloc, funargs);
