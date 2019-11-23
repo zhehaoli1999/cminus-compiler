@@ -111,6 +111,10 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
     currentFunc = funcFF;
+    scope.exit();
+    // for later unction-call
+    scope.push(node.id, funcFF);
+    scope.enter();
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -136,7 +140,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         for (auto arg : node.params){
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
-                std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
+                std::cout<<"[ERR] Function parameter "<<arg->id<<" is referred before declaration"<<std::endl;
                 exit(0);
             } else {
                 std::cout<<"enter store value"<<std::endl;
@@ -146,9 +150,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
-    scope.exit();
-    // for later unction-call
-    scope.push(node.id, funcFF);
+    std::cout<<"exit func declaration"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_param &node) {
@@ -280,6 +282,7 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
     } else {
         node.expression.get() -> accept(*this);
         Type* TYPE32 = Type::getInt32Ty(context);
+        std::cout<<"enter return get type"<<std::endl;
         if(ret->getType() == TYPE32) builder.CreateRet(ret);
         else{
             auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
@@ -383,6 +386,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
+        
         if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
         else lValue = ret;
 
@@ -390,6 +394,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         auto rValue = ret;
 
         Value* icmp ;   
+        std::cout<<"enter get type"<<std::endl;
         switch (node.op)
         {
             case OP_LE:
@@ -491,10 +496,40 @@ void CminusBuilder::visit(syntax_term &node) {
     }
 }
 
+// void CminusBuilder::visit(syntax_call &node) {
+//     std::cout<<"enter call"<<std::endl;
+//     auto fAlloc = scope.find(node.id);
+//     std::cout<<node.id<<std::endl;
+//     if(fAlloc == nullptr){
+//         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
+//     } else {
+//         std::vector<Value *> funargs;
+//         for(auto expr : node.args){
+//             expr->accept(*this);
+//             funargs.push_back(ret); 
+//        }
+//         Type* TYPE32 = Type::getInt32Ty(context);
+//         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+//         // auto fload = builder.CreateLoad(fAlloc);
+//         if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
+//             auto i32Zero = CONST(0);
+//             Value* indices[2] = {i32Zero,i32Zero};
+//             std::cout<<"hi!!!!"<<std::endl;
+//             auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
+//             // fcall = builder.CreateGEP(fAlloc,i32Zero); 
+//             builder.CreateCall(fAlloc, funargs);
+//         }
+//         else{
+//             builder.CreateCall(fAlloc, funargs);
+//         } 
+//     }
+// }
+
 void CminusBuilder::visit(syntax_call &node) {
     std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
-    std::cout<<node.id<<std::endl;
+    Type* TYPE32 = Type::getInt32Ty(context);
+    auto TYPEARRAY = ArrayType::getInt32Ty(context);
     if(fAlloc == nullptr){
         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
         exit(0);
@@ -506,9 +541,9 @@ void CminusBuilder::visit(syntax_call &node) {
             expr->accept(*this);
             funargs.push_back(ret); 
        }
+        std::cout<<"create call and return "<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         ret = builder.CreateCall(fAlloc, funargs);
     }
 }
-

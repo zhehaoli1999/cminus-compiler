@@ -9,12 +9,15 @@ void main(void) {
   int temp;
   x = input();
   y = input();
-  if (x < y) {
+  x = 2;
+  y = 10;
+  output(x);
+  /*if (x < y) {
     temp = x;
     x = y;
     y = temp;
   }
   temp = gcd(x, y);
-  output(temp);
+  output(temp);*/
   return;
 }
