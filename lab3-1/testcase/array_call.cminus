@@ -7,5 +7,7 @@ int main(void){
    int b;
    b = 1;
    a[2] = 10;
-   return call(a,b);
+   b = call(a,b);
+   output(b);
+   return b;
 }

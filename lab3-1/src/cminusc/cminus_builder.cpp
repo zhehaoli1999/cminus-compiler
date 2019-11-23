@@ -556,9 +556,6 @@ void CminusBuilder::visit(syntax_call &node) {
             expr->accept(*this);
             funargs.push_back(ret); 
        }
-       if(node.id == "input"){
-           std::cout<<"--------------input"<<std::endl;
-       }
         std::cout<<"create call and return "<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
