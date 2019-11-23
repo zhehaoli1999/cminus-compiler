@@ -357,6 +357,7 @@ void CminusBuilder::visit(syntax_var &node) {
         exit(0);
     }
     std::cout<<"out var"<<node.id<<std::endl;
+    isParam = 0;
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
@@ -364,8 +365,12 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
     std::cout<<"enter assign-expression"<<std::endl;
     node.var.get()->accept(*this);
     Value* var = ret;
+
     node.expression.get()->accept(*this);
     Type* TYPE1 = Type::getInt1Ty(context);
+    Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+
+    if(ret->getType() == TY32Ptr) ret = builder.CreateLoad(ret);
 
     // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
     if (ret->getType() == TYPE1){
@@ -387,12 +392,19 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
+        Value* rValue;
         
         if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
         else lValue = ret;
-
+        // lValue = builder.CreateLoad(TYPE32, ret);
+        // lValue = ret;
         node.additive_expression_r.get()->accept(*this);
-        auto rValue = ret;
+       
+        if(ret->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, ret);
+        else rValue = ret;
+        // auto rValue = ret;
+
+
 
         Value* icmp ;   
         std::cout<<"enter get type"<<std::endl;
@@ -482,7 +494,9 @@ void CminusBuilder::visit(syntax_term &node) {
         if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret, "tmp");
         else lValue = ret;
         node.factor.get()->accept(*this);
-        auto rValue = ret;
+        Value* rValue;
+        if(ret->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, ret, "tmp");
+        else rValue = ret;
         Value* result;
 
         // mulop is declared in syntax_tree.hpp
