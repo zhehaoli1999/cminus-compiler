@@ -25,11 +25,6 @@ int main(void){
    d[1] = 1;
    b = 1;
    a[2] = 10;
-<<<<<<< HEAD
-   b = call(a,b);
-   output(b);
-   return b;
-=======
 
    c = call(a[0],b);
    c = call(a[b],b);
@@ -52,5 +47,4 @@ int main(void){
    }
 
    return callmom(a[ d[ d[ d[1] ] ] ] > d[1], b );;
->>>>>>> bc5721c66f104b04332acc896e9d2488c11153a1
 }
