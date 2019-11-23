@@ -28,7 +28,7 @@ void CminusBuilder::visit(syntax_program &node) {
         d->accept(*this);
     }
     builder.ClearInsertionPoint();
-
+    
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
@@ -68,16 +68,23 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             std::cout<<"enter global array declarations"<<std::endl;
             // TODO: global array
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
-            auto gArrayAlloc = new GlobalVariable(arrayType, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroArray = ConstantAggregateZero::get(arrayType);
+            auto gArrayAlloc = new GlobalVariable(*module, arrayType, false, GlobalVariable::LinkageTypes::CommonLinkage, zeroArray);
+            
+            // gArrayAlloc->setInitializer(zeroNum);
+            scope.push(node.id, gArrayAlloc);
+            scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
             std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
-            auto gdAlloc = new GlobalVariable(TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
+            auto gdAlloc = new GlobalVariable(*module,TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage, zeroNum);
+            
             
             // gdAlloc->setAlignment(0);
-            // gdAlloc->setInitializer(CONST(0));
+            //gdAlloc->setInitializer(zeroArray);
             scope.push(node.id, gdAlloc);
         }
     }
