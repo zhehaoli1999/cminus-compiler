@@ -26,8 +26,10 @@ falseBranch:                                      ; preds = %entry
   %6 = load i32, i32* %3
   %7 = load i32, i32* %2
   %tmp1 = load i32, i32* %2
-  %8 = udiv i32 %tmp1, i32* %3
-  %9 = mul nsw i32 %8, i32* %3
+  %tmp2 = load i32, i32* %3
+  %8 = udiv i32 %tmp1, %tmp2
+  %tmp3 = load i32, i32* %3
+  %9 = mul nsw i32 %8, %tmp3
   %10 = sub nsw i32 %7, %9
   %11 = call i32 @gcd(i32 %6, i32 %10)
   ret i32 %11
@@ -38,13 +40,9 @@ entry:
   %0 = alloca i32
   %1 = alloca i32
   %2 = alloca i32
-  %3 = call i32 @input()
-  store i32 %3, i32* %0
-  %4 = call i32 @input()
-  store i32 %4, i32* %1
   store i32 2, i32* %0
   store i32 10, i32* %1
-  %5 = load i32, i32* %0
-  call void @output(i32 %5)
+  %3 = load i32, i32* %0
+  call void @output(i32 %3)
   ret void
 }
