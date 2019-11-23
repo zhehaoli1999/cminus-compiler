@@ -209,21 +209,17 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        // out->insertInto(currentFunc);
 
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         int insertedFlag = 0;
         if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
-            //std::cout<<"not returned\n"<<std::endl;
             insertedFlag = 1;
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        //  else
-        //     //std::cout<<pt->getOpcode()<<std::endl;
-        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
         
         // falseBB
         builder.SetInsertPoint(falseBranch);
@@ -249,7 +245,6 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 
         if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
         
-        std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
     }
 }
