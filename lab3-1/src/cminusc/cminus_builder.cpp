@@ -111,6 +111,10 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
     currentFunc = funcFF;
+    scope.exit();
+    // for later unction-call
+    scope.push(node.id, funcFF);
+    scope.enter();
     auto funBB = BasicBlock::Create(context, "entry", funcFF);
     builder.SetInsertPoint(funBB);
     
@@ -136,7 +140,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         for (auto arg : node.params){
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
-                std::cout<<"[ERR] Function parameter"<<arg->id<<"is referred before declaration"<<std::endl;
+                std::cout<<"[ERR] Function parameter "<<arg->id<<" is referred before declaration"<<std::endl;
                 exit(0);
             } else {
                 std::cout<<"enter store value"<<std::endl;
@@ -146,9 +150,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
-    scope.exit();
-    // for later unction-call
-    scope.push(node.id, funcFF);
+    std::cout<<"exit func declaration"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_param &node) {

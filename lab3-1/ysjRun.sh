@@ -2,8 +2,8 @@ cd build
 cmake .. -DLLVM-DIR=/home/jasmine/lab/compiler/llvm-install/lib/cmake/llvm
 make -j
 # ./cminusc ../testcase/if_new.cminus -analyze
-./cminusc ../testcase/if_simple.cminus -emit-llvm
-# ./cminusc ../testcase/if_new.cminus
+./cminusc ../testcase/gcd.cminus -emit-llvm
+# ./cminusc ../testcase/gcd.cminus
 
 # lli testcase/if_null.ll
 # cd build
