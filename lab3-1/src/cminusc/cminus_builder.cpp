@@ -12,6 +12,7 @@ using namespace llvm;
 Value * ret;
 Type * retType;
 bool isParam = 0;
+bool isNotParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
@@ -296,6 +297,7 @@ void CminusBuilder::visit(syntax_var &node) {
 
     std::cout<<"enter var:"<<node.id<<std::endl;
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+    Type* TYPE1 = Type::getInt1Ty(context);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto var = scope.find(node.id);
    
@@ -304,7 +306,7 @@ void CminusBuilder::visit(syntax_var &node) {
         if(!node.expression){
             // 如果是2. call() 语句中的参数，要转为 int*
             if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
-                isParam = 0;
+                // isParam = 0;
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,i32Zero};
                 ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
@@ -312,28 +314,31 @@ void CminusBuilder::visit(syntax_var &node) {
             // 如果是函数传参，就先load
             else if(isParam == 1 && var->getType() == TY32Ptr){
                 ret = builder.CreateLoad(var); 
-                isParam = 0; 
+                // isParam = 0; 
                 }
             // 1. 普通变量的情况
             else ret = var;
         }
-        // 普通数组变量的情况
+        // 数组变量的情况
         else{
             node.expression.get()->accept(*this);
             auto num = ret;  // num can be a variable, not only integer
             int64_t numValue, bound;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
             
+            // 如果在scope中有 node.id+"_len"
+            if (scope.find(node.id+"_len")){ 
             // 从 ConstantInt 类型中获取 origin value,判断越界
-            if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
-                if (CI->getBitWidth() <= 32) {
-                    numValue = CI->getSExtValue();
-                    bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
-                }
-                if (numValue < 0 || numValue >= bound ) // neg_idx_except();
-                {
-                    std::cout<<"[ERR] index exception."<<std::endl;
-                    exit(0);
+                if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
+                    if (CI->getBitWidth() <= 32) {
+                        numValue = CI->getSExtValue();
+                        bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
+                    }
+                    if (numValue < 0 || numValue >= bound ) // neg_idx_except();
+                    {
+                        std::cout<<"[ERR] index exception."<<std::endl;
+                        exit(0);
+                    }
                 }
             }
             // 看clang的，将i32转为i64
@@ -348,16 +353,27 @@ void CminusBuilder::visit(syntax_var &node) {
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,num};
                 arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
-            }              
+            } 
+
             ret = arrayPtr;
+
+            if (isParam == 1){ // 解决传参数 call(a[0]) 的问题
+                ret = builder.CreateLoad(ret);
+            }
         } 
+
     }
     else{
         std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
         exit(0);
     }
+
+    if (ret->getType() == TYPE1){
+        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
+    }
+
     std::cout<<"out var"<<node.id<<std::endl;
-    isParam = 0;
+    // isParam = 0;
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
@@ -367,14 +383,14 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
     Value* var = ret;
 
     node.expression.get()->accept(*this);
-    Type* TYPE1 = Type::getInt1Ty(context);
+    
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
 
     if(ret->getType() == TY32Ptr) ret = builder.CreateLoad(ret);
-
+    Type* TYPE1 = Type::getInt1Ty(context);
     // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
     if (ret->getType() == TYPE1){
-        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), true);
+        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
     }
 
     // the value of expression is stored in ret
@@ -460,7 +476,16 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
 
         node.term.get()->accept(*this);
         auto rValue = ret;
-
+        if(rValue->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, rValue);
+        
+        Type* TYPE1 = Type::getInt1Ty(context);
+        if (lValue->getType() == TYPE1){
+            lValue = builder.CreateIntCast(lValue, Type::getInt32Ty(context), false);
+        }
+        if (rValue->getType() == TYPE1){
+            rValue = builder.CreateIntCast(rValue, Type::getInt32Ty(context), false);
+        }
+        
         Value* iAdd;
         if (node.op == OP_PLUS){
             //  builder.CreateNSWAdd 返回的type是TYPE32, 不是ptr to TYPE32
@@ -498,6 +523,14 @@ void CminusBuilder::visit(syntax_term &node) {
         if(ret->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, ret, "tmp");
         else rValue = ret;
         Value* result;
+        Type* TYPE1 = Type::getInt1Ty(context);
+        if (lValue->getType() == TYPE1){
+            lValue = builder.CreateIntCast(lValue, Type::getInt32Ty(context), false);
+        }
+        if (rValue->getType() == TYPE1){
+            rValue = builder.CreateIntCast(rValue, Type::getInt32Ty(context), false);
+        }
+
 
         // mulop is declared in syntax_tree.hpp
         if(node.op == OP_MUL){
@@ -550,12 +583,18 @@ void CminusBuilder::visit(syntax_call &node) {
         exit(0);
     } 
     else {
+        Type* TYPE1 = Type::getInt1Ty(context);
         std::vector<Value *> funargs;
         for(auto expr : node.args){
             isParam = 1;
             expr->accept(*this);
+            // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
+            if (ret->getType() == TYPE1){
+                ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
+            }
             funargs.push_back(ret); 
        }
+       isParam = 0;
         std::cout<<"create call and return "<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
