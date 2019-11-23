@@ -1,7 +1,8 @@
-int a; /* 是否正确？？ */
-
+int a; 
+int ab[10];
 void main(void){
     int b;
     b = a;
-    return b; 
+    ab[1] = 2;
+    return ab[1]; 
 }
