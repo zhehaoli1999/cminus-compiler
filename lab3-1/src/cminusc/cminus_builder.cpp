@@ -28,7 +28,7 @@ void CminusBuilder::visit(syntax_program &node) {
         d->accept(*this);
     }
     builder.ClearInsertionPoint();
-
+    
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
@@ -68,16 +68,23 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             std::cout<<"enter global array declarations"<<std::endl;
             // TODO: global array
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
-            auto gArrayAlloc = new GlobalVariable(arrayType, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroArray = ConstantAggregateZero::get(arrayType);
+            auto gArrayAlloc = new GlobalVariable(*module, arrayType, false, GlobalVariable::LinkageTypes::CommonLinkage, zeroArray);
+            
+            // gArrayAlloc->setInitializer(zeroNum);
+            scope.push(node.id, gArrayAlloc);
+            scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
             std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
-            auto gdAlloc = new GlobalVariable(TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
+            auto gdAlloc = new GlobalVariable(*module,TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage, zeroNum);
+            
             
             // gdAlloc->setAlignment(0);
-            // gdAlloc->setInitializer(CONST(0));
+            //gdAlloc->setInitializer(zeroArray);
             scope.push(node.id, gdAlloc);
         }
     }
@@ -212,21 +219,17 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        // out->insertInto(currentFunc);
 
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         int insertedFlag = 0;
         if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
-            //std::cout<<"not returned\n"<<std::endl;
             insertedFlag = 1;
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        //  else
-        //     //std::cout<<pt->getOpcode()<<std::endl;
-        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
         
         // falseBB
         builder.SetInsertPoint(falseBranch);
@@ -252,7 +255,6 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 
         if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
         
-        std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
     }
 }
