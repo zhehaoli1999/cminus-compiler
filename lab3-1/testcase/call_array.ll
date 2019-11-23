@@ -8,19 +8,21 @@ declare void @output(i32)
 
 declare void @neg_idx_except()
 
-define i32 @call(i32*, i32*, i32) {
+define i32 @call(i32*, i32*, i32, i32*) {
 entry:
-  %3 = alloca i32*
   %4 = alloca i32*
-  %5 = alloca i32
-  store i32* %0, i32** %3
-  store i32* %1, i32** %4
-  store i32 %2, i32* %5
-  %6 = load i32, i32* %5
-  %7 = sext i32 %6 to i64
-  %8 = load i32*, i32** %4
-  %9 = getelementptr inbounds i32, i32* %8, i64 %7
-  %tmp = load i32, i32* %9
+  %5 = alloca i32*
+  %6 = alloca i32
+  %7 = alloca i32*
+  store i32* %0, i32** %4
+  store i32* %1, i32** %5
+  store i32 %2, i32* %6
+  store i32* %3, i32** %7
+  %8 = load i32, i32* %6
+  %9 = sext i32 %8 to i64
+  %10 = load i32*, i32** %5
+  %11 = getelementptr inbounds i32, i32* %10, i64 %9
+  %tmp = load i32, i32* %11
   ret i32 %tmp
 }
 
@@ -72,12 +74,14 @@ outloop:                                          ; preds = %loopJudge
 trueBranch:                                       ; preds = %outloop
   %27 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
   %28 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
-  %29 = call i32 @call(i32* %27, i32* %28, i32 2)
-  ret i32 %29
+  %29 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %30 = call i32 @call(i32* %27, i32* %28, i32 2, i32* %29)
+  ret i32 %30
 
 falseBranch:                                      ; preds = %outloop
-  %30 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
-  %31 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
-  %32 = call i32 @call(i32* %30, i32* %31, i32 1)
-  ret i32 %32
+  %31 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %32 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
+  %33 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %34 = call i32 @call(i32* %31, i32* %32, i32 1, i32* %33)
+  ret i32 %34
 }
