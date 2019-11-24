@@ -4,5 +4,5 @@ int main(void){
     int b;
     b = a;
     ab[1] = 2;
-    return ab[1]; 
+    output(ab[1]); 
 }
