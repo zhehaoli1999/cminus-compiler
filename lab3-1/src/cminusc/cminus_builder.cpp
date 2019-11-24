@@ -259,7 +259,7 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
     auto out = BasicBlock::Create(context, "outloop", currentFunc);
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPE1 = Type::getInt1Ty(context);
-    builder.CreateBr(loopJudge);
+    if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(loopJudge);
     
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
