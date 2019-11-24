@@ -464,6 +464,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
+
         if(ret->getType() == TY32Ptr){
             lValue = builder.CreateLoad(TYPE32, ret);
         }
@@ -539,35 +540,6 @@ void CminusBuilder::visit(syntax_term &node) {
     }
 }
 
-// void CminusBuilder::visit(syntax_call &node) {
-//     std::cout<<"enter call"<<std::endl;
-//     auto fAlloc = scope.find(node.id);
-//     std::cout<<node.id<<std::endl;
-//     if(fAlloc == nullptr){
-//         std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
-//     } else {
-//         std::vector<Value *> funargs;
-//         for(auto expr : node.args){
-//             expr->accept(*this);
-//             funargs.push_back(ret); 
-//        }
-//         Type* TYPE32 = Type::getInt32Ty(context);
-//         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
-//         // auto fload = builder.CreateLoad(fAlloc);
-//         if(fAlloc->getType() != TYPE32 && fAlloc->getType() != TY32Ptr){
-//             auto i32Zero = CONST(0);
-//             Value* indices[2] = {i32Zero,i32Zero};
-//             std::cout<<"hi!!!!"<<std::endl;
-//             auto fcall = builder.CreateInBoundsGEP(fAlloc, ArrayRef<Value *>(indices, 2));   // ! 这里会报段错误
-//             // fcall = builder.CreateGEP(fAlloc,i32Zero); 
-//             builder.CreateCall(fAlloc, funargs);
-//         }
-//         else{
-//             builder.CreateCall(fAlloc, funargs);
-//         } 
-//     }
-// }
-
 void CminusBuilder::visit(syntax_call &node) {
     // std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
@@ -589,6 +561,10 @@ void CminusBuilder::visit(syntax_call &node) {
             // std::cout<<"!"<<std::endl;
             if (ret->getType() == TYPE32){
                 ret = ret;
+            }
+            
+            else if  (ret->getType() == TYPE1){
+                ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
             }
 
             // 如果 ret的类型是 i32* ,那就是传参数 int
