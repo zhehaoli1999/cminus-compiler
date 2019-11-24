@@ -43,13 +43,13 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
 
-    std::cout<<"enter var declarations"<<std::endl;
+    // std::cout<<"enter var declarations"<<std::endl;
     // Note that in param declaration, it just declare a pointer
     // But in var declarasiton, it should declare a array with its len
     if(!scope.in_global()){
         if(node.num){
         // TODO: local array
-            std::cout<<"declare an array"<<std::endl;
+            // std::cout<<"declare an array"<<std::endl;
 
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
@@ -65,7 +65,7 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
         }
     } else {
         if(node.num){
-            std::cout<<"enter global array declarations"<<std::endl;
+            // std::cout<<"enter global array declarations"<<std::endl;
             // TODO: global array
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             ConstantAggregateZero* zeroArray = ConstantAggregateZero::get(arrayType);
@@ -73,10 +73,10 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             
             // gArrayAlloc->setInitializer(zeroNum);
             scope.push(node.id, gArrayAlloc);
-            scope.push(node.id+"_len", CONST(node.num->value));
+            // scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
-            std::cout<<"enter global var declarations"<<std::endl;
+            // std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
             ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
@@ -97,7 +97,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
-    std::cout<<"enter func declarations"<<std::endl;
+    // std::cout<<"enter func declarations"<<std::endl;
     Type * funType = node.type == TYPE_VOID ? TYPEV : TYPE32;
 
     // function parameters' type
@@ -108,7 +108,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         for(auto arg : node.params){
             if(arg->isarray){
                 //TODO: Should it push pointer type or array type
-                std::cout<<"Get Array!"<<std::endl;
                 args_type.push_back(TYPEARRAY_32);
             } else if(arg->type == TYPE_INT) {
                 // it must be int
@@ -128,7 +127,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     builder.SetInsertPoint(funBB);
     
 
-    std::cout<<"enter params declarations"<<std::endl;
+    // std::cout<<"enter params declarations"<<std::endl;
     // Note that node.params are Syntrx Tree Node ptr, it can NOT be directly passed into function declaration list
     for(auto arg : node.params ) {
         arg.get()->accept(*this);
@@ -141,7 +140,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     for (auto arg = funcFF->arg_begin(); arg != funcFF->arg_end(); arg++){
         args_value.push_back(arg);
     }
-    std::cout<<"fucntion parameters: "<<args_value.size()<<std::endl;
+    // std::cout<<"fucntion parameters: "<<args_value.size()<<std::endl;
     
     // assert node params size = args_value size
     if(node.params.size() > 0 && args_value.size() > 0){
@@ -152,7 +151,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
                 std::cout<<"[ERR] Function parameter "<<arg->id<<" is referred before declaration"<<std::endl;
                 exit(0);
             } else {
-                std::cout<<"enter store value"<<std::endl;
                 builder.CreateStore(args_value[i++], pAlloc);
             }
         }
@@ -185,7 +183,6 @@ void CminusBuilder::visit(syntax_param &node) {
 
     } else if (node.type == TYPE_INT && node.isarray){
         // array
-        std::cout<<"create array param"<<std::endl;
         pAlloc = builder.CreateAlloca(TYPEARRAY_32);
         scope.push(node.id, pAlloc);
     } else{
@@ -204,7 +201,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
         }
     }
     
-    std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
+    // std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
     for(auto s : node.statement_list){
         s->accept(*this);
     }  
@@ -219,7 +216,7 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
     // selection-stmt→ ​if ( expression ) statement∣ if ( expression ) statement else statement​
-    std::cout<<"enter selection statement"<<std::endl;
+    // std::cout<<"enter selection statement"<<std::endl;
     node.expression->accept(*this);
     // ret = builder.CreateCast()
 
@@ -274,7 +271,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {
     // iteration-stmt→while ( expression ) statement
-    std::cout<<"enter selection statement"<<std::endl;
+    // std::cout<<"enter selection statement"<<std::endl;
     auto loopJudge = BasicBlock::Create(context, "loopJudge", currentFunc);
     auto loopBody = BasicBlock::Create(context, "loopBody", currentFunc);
     auto out = BasicBlock::Create(context, "outloop", currentFunc);
@@ -297,13 +294,12 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
 }
 
 void CminusBuilder::visit(syntax_return_stmt &node) {
-    std::cout<<"enter return"<<std::endl;
+    // std::cout<<"enter return"<<std::endl;
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
         node.expression.get() -> accept(*this);
         Type* TYPE32 = Type::getInt32Ty(context);
-        std::cout<<"enter return get type"<<std::endl;
         if(ret->getType() == TYPE32) builder.CreateRet(ret);
         else{
             auto retLoad = builder.CreateLoad(TYPE32, ret, "tmp");
@@ -314,41 +310,41 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
 
 void CminusBuilder::visit(syntax_var &node) {
 
-    std::cout<<"enter var:"<<node.id<<std::endl;
+    // std::cout<<"enter var:"<<node.id<<std::endl;
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
     Type* TYPE1 = Type::getInt1Ty(context);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto var = scope.find(node.id);
    
     if(var){
-        // 如果是 1.普通变量 或者 2. call() 语句中的参数（这就可能是数组指针）
+        // 没有expression说明： 1.普通变量 或者 2. call() 语句中的参数（数组指针或者i32）
         if(!node.expression){
-            // 如果是2. call() 语句中的数组指针，要转为 int*
+            // 情况1: 如果是call() 语句中的数组指针，要转为 int*
             if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
                 // isParam = 0;
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,i32Zero};
                 ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
             }
-            // 如果是函数传参，就先load
+            // 情况2: 如果是函数传参i32*，就先load
             else if(isParam == 1 && var->getType() == TY32Ptr){
-                // 函数参数中出现赋值语句的情况
+                // 函数参数中出现赋值语句的情况，不要load
                 if(!isAssign) ret = builder.CreateLoad(var);
                 else ret = var; 
                 // isParam = 0; 
                 }
-            // 1. 普通变量的情况
+            // 情况3: 普通变量的情况
             else ret = var;
         }
-        // 数组变量的情况
+        // 有expression，说明是数组变量
         else{
             node.expression.get()->accept(*this);
             auto num = ret;  // num can be a variable, not only integer
             
-            
             int64_t numValue, bound;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
             
+            // 判断数组指数为负
             /***/
             if(!expHandler) expHandler = BasicBlock::Create(context," expHandler", currentFunc);
             auto normalCond = BasicBlock::Create(context, "normalCond", currentFunc);
@@ -376,18 +372,24 @@ void CminusBuilder::visit(syntax_var &node) {
             
             Value* arrayPtr;
             auto varLoad = builder.CreateLoad(var);
+
+            //在子函数中使用传入的数组指针参数的情况（note:在子函数中必须先load一次传入的数组指针参数，再getGEP）
             if(varLoad->getType() == TY32Ptr){
+                // arrayPtr 类型是 i32*
                 arrayPtr = builder.CreateInBoundsGEP(varLoad,num); 
             }
+            // 不是在子函数中使用传入的数组指针参数的情况
+            // 在main中 如 a[1] = 1, varLoad 得到的类型是[ ? x ? ],而不是i32*
             else{
                 auto i32Zero = CONST(0);
                 Value* indices[2] = {i32Zero,num};
+                // arrayPtr 类型是 i32*
                 arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
             } 
 
             ret = arrayPtr;
-
-            if (isParam == 1){ // 解决传参数 call(a[0]) 的问题
+            // 解决传参数 call(a[0]) 的问题: 需要传入int，那就再load一次
+            if (isParam == 1){ 
                 ret = builder.CreateLoad(ret);
             }
         } 
@@ -402,13 +404,13 @@ void CminusBuilder::visit(syntax_var &node) {
         ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
     }
 
-    std::cout<<"out var"<<node.id<<std::endl;
+    // std::cout<<"out var"<<node.id<<std::endl;
     // isParam = 0;
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
     // var = expression
-    std::cout<<"enter assign-expression"<<std::endl;
+    // std::cout<<"enter assign-expression"<<std::endl;
     isAssign = 1;
     node.var.get()->accept(*this);
     isAssign = 0;
@@ -432,7 +434,7 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
 void CminusBuilder::visit(syntax_simple_expression &node) {
     // simple-expression → additive-expression relop additive- expression | additive-expression
 
-    std::cout<<"enter simple-expression"<<std::endl;
+    // std::cout<<"enter simple-expression"<<std::endl;
     node.additive_expression_l.get()->accept(*this);
 
     // 按照 simple-expression → additive-expression relop additive- expression
@@ -453,7 +455,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         // auto rValue = ret;
 
         Value* icmp ;   
-        std::cout<<"enter get type"<<std::endl;
+        // std::cout<<"enter get type"<<std::endl;
         switch (node.op)
         {
             case OP_LE:
@@ -488,7 +490,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
     
     // 按照 additive-expression → term 
     if(node.additive_expression == nullptr){
-        std::cout<<"enter additive-expression -> term"<<std::endl;
+        // std::cout<<"enter additive-expression -> term"<<std::endl;
         // It seems that it doesn't matter whether use shared-ptr.get() or not to refer to its member function
         node.term.get()->accept(*this);
     } 
@@ -534,7 +536,7 @@ void CminusBuilder::visit(syntax_term &node) {
     // 按照 term -> factor
     if(node.term == nullptr){
         // std::cout<<node.factor<<std::endl;
-        std::cout<<"enter factor"<<std::endl;
+        // std::cout<<"enter factor"<<std::endl;
         if(node.factor != nullptr) 
             node.factor->accept(*this);
     }
@@ -604,7 +606,7 @@ void CminusBuilder::visit(syntax_term &node) {
 // }
 
 void CminusBuilder::visit(syntax_call &node) {
-    std::cout<<"enter call"<<std::endl;
+    // std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto TYPEARRAY = ArrayType::getInt32Ty(context);
@@ -625,7 +627,7 @@ void CminusBuilder::visit(syntax_call &node) {
             funargs.push_back(ret); 
        }
        isParam = 0;
-        std::cout<<"create call and return "<<std::endl;
+        // std::cout<<"create call and return "<<std::endl;
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         ret = builder.CreateCall(fAlloc, funargs);
