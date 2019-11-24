@@ -74,14 +74,12 @@ outloop:                                          ; preds = %loopJudge
 trueBranch:                                       ; preds = %outloop
   %27 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
   %28 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
-  %29 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
-  %30 = call i32 @call(i32* %27, i32* %28, i32 2, i32* %29)
-  ret i32 %30
+  %29 = call i32 @call(i32* %27, i32* %28, i32 2)
+  ret i32 %29
 
 falseBranch:                                      ; preds = %outloop
-  %31 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
-  %32 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
-  %33 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
-  %34 = call i32 @call(i32* %31, i32* %32, i32 1, i32* %33)
-  ret i32 %34
+  %30 = getelementptr inbounds [10 x i32], [10 x i32]* %0, i32 0, i32 0
+  %31 = getelementptr inbounds [5 x i32], [5 x i32]* %1, i32 0, i32 0
+  %32 = call i32 @call(i32* %30, i32* %31, i32 1)
+  ret i32 %32
 }
