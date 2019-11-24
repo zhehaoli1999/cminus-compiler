@@ -35,7 +35,7 @@ falseBranch:                                      ; preds = %entry
   ret i32 %11
 }
 
-define void @main() {
+define i32 @main() {
 entry:
   %0 = alloca i32
   %1 = alloca i32

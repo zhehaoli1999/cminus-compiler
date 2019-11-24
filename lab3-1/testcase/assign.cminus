@@ -1,0 +1,12 @@
+int call(int a){
+    /*output(a);*/
+    return a;
+}
+int main(void){
+    int a[10];
+    int b;
+    a[1] = 1;
+    b = (a[ a[1] = 1 ] = 1);
+    /*call (b = a[1]);*/
+    return call(b = b= (b = b*2+1));
+}
