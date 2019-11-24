@@ -16,7 +16,7 @@ cd ../testcase
 echo "tesing !!!!!!!!!!!!!!!!!!!!!!!!!!"
 for file in $(ls)
 do
-    if test -x $file &&;
+    if test -x $file ;
     then
         echo $file
         echo "*****************************"
