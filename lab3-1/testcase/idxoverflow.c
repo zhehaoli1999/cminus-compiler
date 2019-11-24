@@ -6,6 +6,5 @@ int main(void){
    int c;
    b = 2;
    c = 3;
-   a[11] = 1;
    return a[b-c];
 }

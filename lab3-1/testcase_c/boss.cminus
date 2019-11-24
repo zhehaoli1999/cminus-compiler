@@ -44,6 +44,7 @@ int polynomial(int n, int arr[], int x)
 
 void helloGlobal(int globalA, int b)
 {
+  output(globalA);
   globalA = b; /* fake globaA */
   globalArr[0] = b;
 }
