@@ -206,6 +206,8 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     // selection-stmt→ ​if ( expression ) statement∣ if ( expression ) statement else statement​
     std::cout<<"enter selection statement"<<std::endl;
     node.expression->accept(*this);
+    // ret = builder.CreateCast()
+
     Type* TYPE32 = Type::getInt32Ty(context);
     if(node.else_statement != nullptr){
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
@@ -419,8 +421,6 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         if(ret->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, ret);
         else rValue = ret;
         // auto rValue = ret;
-
-
 
         Value* icmp ;   
         std::cout<<"enter get type"<<std::endl;
