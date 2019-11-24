@@ -325,7 +325,7 @@ void CminusBuilder::visit(syntax_var &node) {
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
             
             // 判断数组指数为负
-            if(!expHandler) expHandler = BasicBlock::Create(context," expHandler", currentFunc);
+            if(!expHandler) expHandler = BasicBlock::Create(context,"expHandler", currentFunc);
             auto normalCond = BasicBlock::Create(context, "normalCond", currentFunc);
             auto exp = builder.CreateICmpSLT(num, CONST(0));
             builder.CreateCondBr(exp, expHandler, normalCond);
