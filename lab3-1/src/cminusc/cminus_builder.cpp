@@ -354,8 +354,8 @@ void CminusBuilder::visit(syntax_var &node) {
 
             ret = arrayPtr;
             // 解决传参数 call(a[0]) 的问题: 需要传入int，那就再load一次
-            if (isParam == 1){ 
-                ret = builder.CreateLoad(ret);
+            if (isParam == 1 ){
+                if(isAssign != 1) ret = builder.CreateLoad(ret);
             }
         } 
 
