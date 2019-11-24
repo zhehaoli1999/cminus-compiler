@@ -294,93 +294,73 @@ void CminusBuilder::visit(syntax_var &node) {
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
     Type* TYPE1 = Type::getInt1Ty(context);
     Type* TYPE32 = Type::getInt32Ty(context);
+
     auto var = scope.find(node.id);
    
     if(var){
         // 没有expression说明： 1.普通变量 或者 2. call() 语句中的参数（数组指针或者i32）
         if(!node.expression){
-            // 情况1: 如果是call() 语句中的数组指针，要转为 int*
-            if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
-                // isParam = 0;
-                auto i32Zero = CONST(0);
-                Value* indices[2] = {i32Zero,i32Zero};
-                ret = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));   
-            }
-            // 情况2: 如果是函数传参i32*，就先load
-            else if(isParam == 1 && var->getType() == TY32Ptr){
-                // 函数参数中出现赋值语句的情况，不要load
-                if(!isAssign) ret = builder.CreateLoad(var);
-                else ret = var; 
-                // isParam = 0; 
-                }
-            // 情况3: 普通变量的情况
-            else ret = var;
+            // 无论怎样，原样类型传回
+            ret = var;
         }
         // 有expression，说明是数组变量
         else{
             node.expression.get()->accept(*this);
-            auto num = ret;  // num can be a variable, not only integer
-            
-            int64_t numValue, bound;
-            if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
-            
+            auto num = ret;
+            if (num->getType() == TY32Ptr) num = builder.CreateLoad(num); // num can be a variable, not only integer
+
+
             // 判断数组指数为负
             if(!expHandler) expHandler = BasicBlock::Create(context,"expHandler", currentFunc);
             auto normalCond = BasicBlock::Create(context, "normalCond", currentFunc);
             auto exp = builder.CreateICmpSLT(num, CONST(0));
             builder.CreateCondBr(exp, expHandler, normalCond);
             builder.SetInsertPoint(normalCond);
-           
-            // // 看clang的，将i32转为i64
+            /***/
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
-            
-            Value* arrayPtr;
-            auto varLoad = builder.CreateLoad(var);
 
-            //在子函数中使用传入的数组指针参数的情况（note:在子函数中必须先load一次传入的数组指针参数，再getGEP）
-            if(varLoad->getType() == TY32Ptr){
-                // arrayPtr 类型是 i32*
-                arrayPtr = builder.CreateInBoundsGEP(varLoad,num); 
-            }
-            // 不是在子函数中使用传入的数组指针参数的情况
-            // 在main中 如 a[1] = 1, varLoad 得到的类型是[ ? x ? ],而不是i32*
-            else{
+            //无论怎样，都转成 ｉ32*
+            Value* varLoad;
+
+            // 如果var类型是[? x ?]* :从[? x ？]*load之后, varLoad的类型是[? x ?] 即数组
+            // 如果var类型是i32** : 从var load之后， varLoad的类型是 i32*
+            varLoad = builder.CreateLoad(var);
+
+            if(varLoad -> getType()->isArrayTy()){
                 auto i32Zero = CONST(0);
-                Value* indices[2] = {i32Zero,num};
-                // arrayPtr 类型是 i32*
-                arrayPtr = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));  
-            } 
-
-            ret = arrayPtr;
-            // 解决传参数 call(a[0]) 的问题: 需要传入int，那就再load一次
-            if (isParam == 1 ){
-                if(isAssign != 1) ret = builder.CreateLoad(ret);
+                Value* indices[2] = {i32Zero,i32Zero};
+                varLoad = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));
+                // 现在 varLoad 类型是 i32*
             }
-        } 
+            // if(varLoad->getType() == TY32Ptr) {  std::cout<<"bb"<<std::endl;}
+            
+            varLoad = builder.CreateInBoundsGEP(varLoad,num); 
+            
+            // 现在ret 统一是 i32*
+            ret = varLoad;
+            // if(ret->getType() == TY32Ptr) {  std::cout<<"a"<<std::endl;}
+        }            
 
     }
     else{
         exit(0);
     }
-
-    if (ret->getType() == TYPE1){
-        ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
-    }
-
 }
 
 void CminusBuilder::visit(syntax_assign_expression &node) {
     // var = expression
-    isAssign = 1;
+    // std::cout<<"enter assign-expression"<<std::endl;
+        
+    Type* TY32Ptr= PointerType::getInt32PtrTy(context);
     node.var.get()->accept(*this);
-    isAssign = 0;
-    Value* var = ret;
+    Value* var = ret; 
+    // if (var->getType() == TY32Ptr) std::cout<<"aa"<<std::endl;
 
     node.expression.get()->accept(*this);
-    
-    Type* TY32Ptr= PointerType::getInt32PtrTy(context);
 
     if(ret->getType() == TY32Ptr) ret = builder.CreateLoad(ret);
+
+    Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPE1 = Type::getInt1Ty(context);
     // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
     if (ret->getType() == TYPE1){
@@ -389,6 +369,9 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
 
     // the value of expression is stored in ret
     builder.CreateStore(ret,var);
+    // 此时 ret 的类型是 TYPE32
+    
+    // if(ret->getType() == TYPE32)  std::cout<<"ccc"<<std::endl;
 }
 
 void CminusBuilder::visit(syntax_simple_expression &node) {
@@ -458,6 +441,7 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
         Type* TYPE32 = Type::getInt32Ty(context);
         Type* TY32Ptr= PointerType::getInt32PtrTy(context);
         Value* lValue;
+
         if(ret->getType() == TY32Ptr){
             lValue = builder.CreateLoad(TYPE32, ret);
         }
@@ -531,29 +515,57 @@ void CminusBuilder::visit(syntax_term &node) {
     }
 }
 
-
 void CminusBuilder::visit(syntax_call &node) {
     auto fAlloc = scope.find(node.id);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto TYPEARRAY = ArrayType::getInt32Ty(context);
+
     if(fAlloc == nullptr){
         exit(0);
     } 
     else {
         Type* TYPE1 = Type::getInt1Ty(context);
+        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+
         std::vector<Value *> funargs;
         for(auto expr : node.args){
-            isParam = 1;
             expr->accept(*this);
-            // 如果ret是通过关系运算得到的，那么其类型为int1，需要转换为int32
-            if (ret->getType() == TYPE1){
+
+            // std::cout<<"!"<<std::endl;
+            if (ret->getType() == TYPE32){
+                ret = ret;
+            }
+            
+            else if  (ret->getType() == TYPE1){
                 ret = builder.CreateIntCast(ret, Type::getInt32Ty(context), false);
             }
+
+            // 如果 ret的类型是 i32* ,那就是传参数 int
+            else if(ret->getType() == TY32Ptr){
+                ret = builder.CreateLoad(ret);
+            }
+
+            // 如果ret类型是 [？ x ？]* 即指向数组的指针: call(int a[])--> 调用：call(a)，按照syntax_var原样返回的逻辑，a是[?x?]*
+            else if(ret -> getType()->getPointerElementType()->isArrayTy()){
+            
+                auto i32Zero = CONST(0);
+                Value* indices[2] = {i32Zero,i32Zero};
+                ret = builder.CreateInBoundsGEP(ret, ArrayRef<Value *>(indices, 2));
+                // 此时ret 类型是 i32*
+                
+                // if(ret->getType() == TY32Ptr) std::cout<<"bbb"<<std::endl;
+            }
+
+            // 如果ret 类型是 i32**
+            else if(ret -> getType()->getPointerElementType() == TY32Ptr){
+                //  std::cout<<"bbbb"<<std::endl;
+                ret = builder.CreateLoad(ret);
+                // 此时ret类型是 i32*
+            }
+
             funargs.push_back(ret); 
        }
-       isParam = 0;
-        Type* TYPE32 = Type::getInt32Ty(context);
-        Type* TY32Ptr= PointerType::getInt32PtrTy(context);
+        // std::cout<<"create call and return "<<std::endl;
         ret = builder.CreateCall(fAlloc, funargs);
     }
 }
