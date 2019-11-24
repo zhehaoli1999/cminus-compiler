@@ -37,6 +37,33 @@ Scope函数主要是用于维护不同作用域下的符号表。(具体接口`d
 ### 全局变量的设计
 1. `Value* ret`
    1. 对于`expression`型变量，将计算所得的值放入`ret`中， 待下一次需要用到的时候保存下来; 参照`syntax_call`中ret的使用
+2. `bool isParam`
+    1. 当调用``syntax_call``函数时，将`isParam`变量置为1。这样做的目的是在函数的参数中数组变量需要做特殊处理，如
+    ```c
+    int call(int a[]){
+        ...
+    }
+    int main(void){
+        ...
+        int a[10];
+        call(a);
+        ...
+    }
+    ```
+    这里使用`isParam`表示call中的a不是一个普通变量，而是一个数组指针。
+    当然还有更复杂的情况：
+    ```c
+    int call(int a){
+        ...
+    }
+    int main(void){
+        ...
+        call(a[ a[1] ]);
+        ...
+    }
+    ```
+    同样需要使用isParam来将`a[a[1]]`转换为`i32*`类型。
+
 
 
 ### 实验总结
