@@ -6,6 +6,9 @@ int main(void){
   while(i < 10){
     i = i + 1;
     a = a + i;
+    if(a > 5){
+      output(a);
+    }
   }
   return a;
 }

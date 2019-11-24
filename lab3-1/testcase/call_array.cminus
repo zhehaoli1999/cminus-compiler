@@ -1,4 +1,4 @@
-int call(int a[], int b[],int n){
+int call(int a[], int b[],int n, int c[]){
     return b[n];
 }
 
@@ -9,6 +9,6 @@ int main(void){
    a[0] = 10;
    b[2] = (b[1] + 5) * 2; 
    while (b[2]< 35) b[2] = b[2] + 10;
-   if (a[0]*2 > 5) return call(a,b,2);
-   else return call(a,b,1);
+   if (a[0]*2 > 5) return call(a,b,2,a);
+   else return call(a,b,1, a);
 }

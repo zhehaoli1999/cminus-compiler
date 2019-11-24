@@ -20,7 +20,7 @@ int number;
 
 // std::vector<struct array> arrayList;
 Function * currentFunc;
-
+BasicBlock* expHandler;
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
@@ -28,7 +28,7 @@ void CminusBuilder::visit(syntax_program &node) {
         d->accept(*this);
     }
     builder.ClearInsertionPoint();
-
+    
 }
 
 void CminusBuilder::visit(syntax_num &node) { 
@@ -68,16 +68,23 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             std::cout<<"enter global array declarations"<<std::endl;
             // TODO: global array
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
-            auto gArrayAlloc = new GlobalVariable(arrayType, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroArray = ConstantAggregateZero::get(arrayType);
+            auto gArrayAlloc = new GlobalVariable(*module, arrayType, false, GlobalVariable::LinkageTypes::CommonLinkage, zeroArray);
+            
+            // gArrayAlloc->setInitializer(zeroNum);
+            scope.push(node.id, gArrayAlloc);
+            scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
             std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
-            auto gdAlloc = new GlobalVariable(TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage);
+            ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
+            auto gdAlloc = new GlobalVariable(*module,TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage, zeroNum);
+            
             
             // gdAlloc->setAlignment(0);
-            // gdAlloc->setInitializer(CONST(0));
+            //gdAlloc->setInitializer(zeroArray);
             scope.push(node.id, gdAlloc);
         }
     }
@@ -112,6 +119,7 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     auto funcFF = Function::Create(FunctionType::get(funType, args_type, false),GlobalValue::LinkageTypes::ExternalLinkage,node.id, module.get());
     // FIXME: check if there can be labels with same id in different scope
     currentFunc = funcFF;
+    expHandler = nullptr;
     scope.exit();
     // for later unction-call
     scope.push(node.id, funcFF);
@@ -151,6 +159,13 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     
     node.compound_stmt->accept(*this);
+    if(expHandler){
+        builder.SetInsertPoint(expHandler);
+        auto neg_idx_except_fun = scope.find("neg_idx_except");
+        builder.CreateCall(neg_idx_except_fun);
+        if(funType == TYPEV) builder.CreateRetVoid();
+        else if(funType == TYPE32) builder.CreateRet(CONST(0));
+    }
     std::cout<<"exit func declaration"<<std::endl;
     scope.exit();
 }
@@ -209,26 +224,25 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     // ret = builder.CreateCast()
 
     Type* TYPE32 = Type::getInt32Ty(context);
+    if(ret->getType() == TYPE32){
+        ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
+    }
     if(node.else_statement != nullptr){
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
         auto out = BasicBlock::Create(context, "outif");
         builder.CreateCondBr(ret,trueBranch,falseBranch);
-        // out->insertInto(currentFunc);
 
         // tureBB
         builder.SetInsertPoint(trueBranch);
         node.if_statement->accept(*this);
         int insertedFlag = 0;
         if(builder.GetInsertBlock()->getTerminator() == nullptr){ // not returned inside the block
-            //std::cout<<"not returned\n"<<std::endl;
             insertedFlag = 1;
             out->insertInto(currentFunc);
             builder.CreateBr(out);
         }
-        //  else
-        //     //std::cout<<pt->getOpcode()<<std::endl;
-        //     builder.CreateBr(pt->getSuccessor(1)) ;
+        
         
         // falseBB
         builder.SetInsertPoint(falseBranch);
@@ -254,7 +268,6 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 
         if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(out); // not returned inside the block
         
-        std::cout<<"enter selection out"<<std::endl;
         builder.SetInsertPoint(out);
     }
 }
@@ -265,11 +278,15 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
     auto loopJudge = BasicBlock::Create(context, "loopJudge", currentFunc);
     auto loopBody = BasicBlock::Create(context, "loopBody", currentFunc);
     auto out = BasicBlock::Create(context, "outloop", currentFunc);
+    Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPE1 = Type::getInt1Ty(context);
     builder.CreateBr(loopJudge);
     
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
+    if(ret->getType() == TYPE32){
+        ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
+    }
     builder.CreateCondBr(ret, loopBody, out);
 
     builder.SetInsertPoint(loopBody);
@@ -325,25 +342,34 @@ void CminusBuilder::visit(syntax_var &node) {
         else{
             node.expression.get()->accept(*this);
             auto num = ret;  // num can be a variable, not only integer
+            
+            
             int64_t numValue, bound;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num);
             
-            // 如果在scope中有 node.id+"_len"
-            if (scope.find(node.id+"_len")){ 
-            // 从 ConstantInt 类型中获取 origin value,判断越界
-                if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
-                    if (CI->getBitWidth() <= 32) {
-                        numValue = CI->getSExtValue();
-                        bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
-                    }
-                    if (numValue < 0 || numValue >= bound ) // neg_idx_except();
-                    {
-                        std::cout<<"[ERR] index exception."<<std::endl;
-                        exit(0);
-                    }
-                }
-            }
-            // 看clang的，将i32转为i64
+            /***/
+            if(!expHandler) expHandler = BasicBlock::Create(context," expHandler", currentFunc);
+            auto normalCond = BasicBlock::Create(context, "normalCond", currentFunc);
+            auto exp = builder.CreateICmpSLT(num, CONST(0));
+            builder.CreateCondBr(exp, expHandler, normalCond);
+            builder.SetInsertPoint(normalCond);
+            /***/
+            // // 如果在scope中有 node.id+"_len"
+            // if (scope.find(node.id+"_len")){ 
+            // // 从 ConstantInt 类型中获取 origin value,判断越界
+            //     if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
+            //         if (CI->getBitWidth() <= 32) {
+            //             numValue = CI->getSExtValue();
+            //             bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
+            //         }
+            //         if (numValue < 0 || numValue >= bound ) // neg_idx_except();
+            //         {
+            //             std::cout<<"[ERR] index exception."<<std::endl;
+            //             exit(0);
+            //         }
+            //     }
+            // }
+            // // 看clang的，将i32转为i64
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
             
             Value* arrayPtr;

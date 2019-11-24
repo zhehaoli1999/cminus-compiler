@@ -40,28 +40,9 @@ entry:
   %0 = alloca i32
   %1 = alloca i32
   %2 = alloca i32
-  %3 = alloca i32
-  store i32 72, i32* %0
-  store i32 18, i32* %1
-  %4 = load i32, i32* %0
-  %5 = load i32, i32* %1
-  %6 = icmp slt i32 %4, %5
-  br i1 %6, label %trueBranch, label %outif
-
-trueBranch:                                       ; preds = %entry
-  %7 = load i32, i32* %0
-  store i32 %7, i32* %2
-  %8 = load i32, i32* %1
-  store i32 %8, i32* %0
-  %9 = load i32, i32* %2
-  store i32 %9, i32* %1
-  br label %outif
-
-outif:                                            ; preds = %trueBranch, %entry
-  %10 = load i32, i32* %0
-  %11 = load i32, i32* %1
-  %12 = call i32 @gcd(i32 %10, i32 %11)
-  store i32 %12, i32* %3
-  %tmp = load i32, i32* %3
-  ret i32 %tmp
+  store i32 2, i32* %0
+  store i32 10, i32* %1
+  %3 = load i32, i32* %0
+  call void @output(i32 %3)
+  ret void
 }
