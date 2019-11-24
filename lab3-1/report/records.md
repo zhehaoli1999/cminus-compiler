@@ -72,20 +72,20 @@ Scope函数主要是用于维护不同作用域下的符号表。(具体接口�
 
 - [x] syntax_program: sjyang
 - [x] syntax_num: sjyang
-- [ ] syntax_var_declaration: sjyang **TODO**
+- [x] syntax_var_declaration: sjyang **TODO**
 - [x] syntax_fun_declaration: sjyang
 - [x] syntax_param: sjyang
 - [x] syntax_compound_stmt: sjyang
 - [x] syntax_expresion_stmt: sjyang
-- [ ] syntax_selection_stmt
-- [ ] syntax_iteration_stmt
-- [ ] syntax_return_stmt: sjyang **TODO**
-- [ ] syntax_var: 
-- [ ] syntax_assign_expression
-- [ ] syntax_simple_expression: sjyang **TODO**
-- [ ] syntax_additive_expression: sjyang **TODO**
-- [ ] syntax_term: sjyang **TODO**
-- [x] syntax_call: sjyang
+- [x] syntax_selection_stmt: kaungy
+- [x] syntax_iteration_stmt: kaungy
+- [x] syntax_return_stmt: sjyang zhehaoli
+- [x] syntax_var: zhehaoli
+- [x] syntax_assign_expression
+- [x] syntax_simple_expression: sjyang zhehaoli
+- [x] syntax_additive_expression: sjyang zhehaoli
+- [x] syntax_term: sjyang zhehaoli
+- [x] syntax_call: sjyang zhehaoli
 
 
 ##### 2019116 sjyang(目前在sjyang分支下)
@@ -139,11 +139,11 @@ TIPS:
 
 ##### 20191119 zhehao update
 1. 在 void CminusBuilder::visit(syntax_var_declaration &node) 中增加了数组变量的分配语句
-1. 在 void CminusBuilder::visit(syntax_assign_expression &node) 中增加了store语句
-1. 在 void CminusBuilder::visit(syntax_simple_expression &node) 中增加了关系运算符计算语句
-1. 在 void CminusBuilder::visit(syntax_additive_expression &node) 中增加了加法计算语句
-1. 在 void CminusBuilder::visit(syntax_term &node) 中增加了乘法除法的计算语句
-1. 在testcase目录下增加了array.cminus, if.cminus等测试样例。
+2. 在 void CminusBuilder::visit(syntax_assign_expression &node) 中增加了store语句
+3. 在 void CminusBuilder::visit(syntax_simple_expression &node) 中增加了关系运算符计算语句
+4. 在 void CminusBuilder::visit(syntax_additive_expression &node) 中增加了加法计算语句
+5. 在 void CminusBuilder::visit(syntax_term &node) 中增加了乘法除法的计算语句
+6. 在testcase目录下增加了array.cminus, if.cminus等测试样例。
 
 
 其他：多层数组在cminus语法中应该是不合法的。
