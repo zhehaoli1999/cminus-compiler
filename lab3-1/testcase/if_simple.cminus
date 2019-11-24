@@ -1,14 +1,8 @@
 int main(void) {
-    if (0) {
+    if (2) {
         return 1;
     } else {
         return 0;
     }
 
-    if (0) {
-        int i;
-        i = 3;
-    } else {
-        return 98;
-    }
 }
