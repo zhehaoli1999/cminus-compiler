@@ -12,7 +12,7 @@ using namespace llvm;
 Value * ret;
 Type * retType;
 bool isParam = 0;
-bool isNotParam = 0;
+bool isAssign = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
@@ -323,7 +323,7 @@ void CminusBuilder::visit(syntax_var &node) {
     if(var){
         // 如果是 1.普通变量 或者 2. call() 语句中的参数（这就可能是数组指针）
         if(!node.expression){
-            // 如果是2. call() 语句中的参数，要转为 int*
+            // 如果是2. call() 语句中的数组指针，要转为 int*
             if(var->getType() != TYPE32 && var->getType() != TY32Ptr && isParam == 1){
                 // isParam = 0;
                 auto i32Zero = CONST(0);
@@ -332,7 +332,9 @@ void CminusBuilder::visit(syntax_var &node) {
             }
             // 如果是函数传参，就先load
             else if(isParam == 1 && var->getType() == TY32Ptr){
-                ret = builder.CreateLoad(var); 
+                // 函数参数中出现赋值语句的情况
+                if(!isAssign) ret = builder.CreateLoad(var);
+                else ret = var; 
                 // isParam = 0; 
                 }
             // 1. 普通变量的情况
@@ -407,7 +409,9 @@ void CminusBuilder::visit(syntax_var &node) {
 void CminusBuilder::visit(syntax_assign_expression &node) {
     // var = expression
     std::cout<<"enter assign-expression"<<std::endl;
+    isAssign = 1;
     node.var.get()->accept(*this);
+    isAssign = 0;
     Value* var = ret;
 
     node.expression.get()->accept(*this);
