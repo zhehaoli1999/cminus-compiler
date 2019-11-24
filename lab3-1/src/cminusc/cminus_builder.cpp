@@ -164,7 +164,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         if(funType == TYPEV) builder.CreateRetVoid();
         else if(funType == TYPE32) builder.CreateRet(CONST(0));
     }
-    std::cout<<"exit func declaration"<<std::endl;
     scope.exit();
 }
 
@@ -329,6 +328,7 @@ void CminusBuilder::visit(syntax_var &node) {
             auto num = ret;
             if (num->getType() == TY32Ptr) num = builder.CreateLoad(num); // num can be a variable, not only integer
 
+
             // 判断数组指数为负
             /***/
             if(!expHandler) expHandler = BasicBlock::Create(context," expHandler", currentFunc);
@@ -337,6 +337,7 @@ void CminusBuilder::visit(syntax_var &node) {
             builder.CreateCondBr(exp, expHandler, normalCond);
             builder.SetInsertPoint(normalCond);
             /***/
+            num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
 
             //无论怎样，都转成 ｉ32*
             Value* varLoad;
@@ -347,16 +348,16 @@ void CminusBuilder::visit(syntax_var &node) {
 
             if(varLoad -> getType()->isArrayTy()){
                 auto i32Zero = CONST(0);
-                Value* indices[2] = {i32Zero,num};
+                Value* indices[2] = {i32Zero,i32Zero};
                 varLoad = builder.CreateInBoundsGEP(var, ArrayRef<Value *>(indices, 2));
                 // 现在 varLoad 类型是 i32*
             }
             // if(varLoad->getType() == TY32Ptr) {  std::cout<<"bb"<<std::endl;}
-
-            auto arrayPtr = builder.CreateInBoundsGEP(varLoad,num); 
+            
+            varLoad = builder.CreateInBoundsGEP(varLoad,num); 
             
             // 现在ret 统一是 i32*
-            ret = arrayPtr;
+            ret = varLoad;
             // if(ret->getType() == TY32Ptr) {  std::cout<<"a"<<std::endl;}
         }            
 
@@ -569,9 +570,7 @@ void CminusBuilder::visit(syntax_call &node) {
 
             // 如果 ret的类型是 i32* ,那就是传参数 int
             else if(ret->getType() == TY32Ptr){
-                std::cout<<"aa"<<std::endl;
                 ret = builder.CreateLoad(ret);
-                std::cout<<"bb"<<std::endl;
             }
 
             // 如果ret类型是 [？ x ？]* 即指向数组的指针: call(int a[])--> 调用：call(a)，按照syntax_var原样返回的逻辑，a是[?x?]*
