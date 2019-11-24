@@ -3,6 +3,6 @@ cmake .. -DLLVM-DIR=/home/jasmine/lab/compiler/llvm-install/lib/cmake/llvm
 make -j
 # ./cminusc ../testcase/neg_num.cminus 
 # ../testcase/neg_num
-./cminusc -emit-llvm ../testcase/boss.cminus
-./cminusc ../testcase/boss.cminus
-# ./../testcase/boss
+./cminusc -emit-llvm ../testcase/while.cminus
+./cminusc ../testcase/while.cminus
+./../testcase/while
