@@ -11,8 +11,8 @@ using namespace llvm;
 // to store state
 Value * ret;
 Type * retType;
-bool isParam = 0;
-bool isNotParam = 0;
+// bool isParam = 0;
+// bool isNotParam = 0;
 // ConstantAggregateZero
 
 //store function for creating basic block
