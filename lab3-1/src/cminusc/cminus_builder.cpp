@@ -352,21 +352,7 @@ void CminusBuilder::visit(syntax_var &node) {
             builder.CreateCondBr(exp, expHandler, normalCond);
             builder.SetInsertPoint(normalCond);
             /***/
-            // // 如果在scope中有 node.id+"_len"
-            // if (scope.find(node.id+"_len")){ 
-            // // 从 ConstantInt 类型中获取 origin value,判断越界
-            //     if (ConstantInt* CI = dyn_cast<ConstantInt>(num)) {
-            //         if (CI->getBitWidth() <= 32) {
-            //             numValue = CI->getSExtValue();
-            //             bound = dyn_cast<ConstantInt>(scope.find(node.id+"_len"))->getSExtValue();
-            //         }
-            //         if (numValue < 0 || numValue >= bound ) // neg_idx_except();
-            //         {
-            //             std::cout<<"[ERR] index exception."<<std::endl;
-            //             exit(0);
-            //         }
-            //     }
-            // }
+
             // // 看clang的，将i32转为i64
             num = builder.CreateIntCast(num, Type::getInt64Ty(context),true);
             
@@ -389,8 +375,8 @@ void CminusBuilder::visit(syntax_var &node) {
 
             ret = arrayPtr;
             // 解决传参数 call(a[0]) 的问题: 需要传入int，那就再load一次
-            if (isParam == 1){ 
-                ret = builder.CreateLoad(ret);
+            if (isParam == 1 ){
+                if(isAssign != 1) ret = builder.CreateLoad(ret);
             }
         } 
 
