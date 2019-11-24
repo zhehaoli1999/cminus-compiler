@@ -156,8 +156,8 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
             }
         }
     }
-    
-    node.compound_stmt->accept(*this);
+    if(node.compound_stmt != nullptr)
+        node.compound_stmt->accept(*this);
     std::cout<<"exit func declaration"<<std::endl;
     scope.exit();
 }
@@ -192,7 +192,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
     if(node.local_declarations.size() > 0){
         for(auto ld : node.local_declarations){
         // assert ld.type is INT
-        ld->accept(*this);
+            ld->accept(*this);
         }
     }
     
