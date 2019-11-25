@@ -144,6 +144,10 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     }
     if(node.compound_stmt != nullptr)
         node.compound_stmt->accept(*this);
+    if(builder.GetInsertBlock()->getTerminator() == nullptr){
+        if(funType == TYPEV) builder.CreateRetVoid();
+        else if(funType == TYPE32) builder.CreateRet(CONST(0));
+    }
     if(expHandler){
         builder.SetInsertPoint(expHandler);
         auto neg_idx_except_fun = scope.find("neg_idx_except");
