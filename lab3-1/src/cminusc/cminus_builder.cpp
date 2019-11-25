@@ -10,9 +10,9 @@ using namespace llvm;
 // You can define global variables here
 // to store state
 Value * ret;
-Type * retType;
-bool isParam = 0;
-bool isAssign = 0;
+// Type * retType;
+// bool isParam = 0;
+// bool isAssign = 0;
 
 //store function for creating basic block
 Function * currentFunc;
