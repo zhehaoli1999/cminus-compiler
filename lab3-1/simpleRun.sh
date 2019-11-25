@@ -6,9 +6,9 @@ make -j
 # ./cminusc -emit-llvm ../testcase/expr.cminus
 # ./cminusc -emit-llvm ../bigtestcase/selection-stmt.cminus
 # ./cminusc ../bigtestcase/selection-stmt.cminus
-./cminusc ../testcase/expr.cminus
+./cminusc -emit-llvm ../testcase/return.cminus
 # ./cminusc ../testcase/while.cminus
 # ./../fjw_testcase/selection-stmt
-./../testcase/expr
+./../testcase/return
 # if_new
 # func_call
