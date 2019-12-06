@@ -3,25 +3,31 @@ cmake .. -DLLVM-DIR=/home/jasmine/lab/compiler/llvm-install/lib/cmake/llvm
 make -j
 # ./cminusc ../testcase/if_new.cminus -analyze
 
-for file in $(ls ../testcase)
+for files in $(ls ../ta_testcase)
 do
-    if [[ $file = *.cminus ]];
-    then
-        echo $file
-        echo "================================================="
-        ./cminusc ../testcase/$file
-    fi
+    for file in $files
+    do
+        if [[ $file = *.cminus ]];
+        then
+            echo $file
+            echo "================================================="
+            ./cminusc ../ta_testcase/$file
+        fi
+    done
 done
-cd ../testcase
+cd ../ta_testcase
 echo "tesing !!!!!!!!!!!!!!!!!!!!!!!!!!"
-for file in $(ls)
-do
-    if test -x $file ;
-    then
-        echo $file
-        echo "*****************************"
-        ./$file
-    fi
+for files in $(ls)
+do  
+    for file in $files
+    do
+        if test -x $file ;
+        then
+            echo $file
+            echo "*****************************"
+            ./$file
+        fi
+    done
 done
 
 # ./cminusc ../testcase/gcd.cminus
