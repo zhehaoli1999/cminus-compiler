@@ -66,7 +66,7 @@ define dso_local i32 @main() {
 
 1. 对函数中的每一条指令进行遍历，每当发现一条死指令时，就检查与该指令的每一个操作数相关的其他指令，若这些指令也是死指令，那就把它们放入一个向量`WorkList`中保存，最后将当前遍历的这条死指令删除。
 2. 在对函数中的指令遍历时，检查当前遍历的指令是否在`WorkList`中，若是，则跳过（这些指令最后被集中处理，不必重复操作）。
-3. 在对函数遍历完成后，对`WorkList`中的指令进行再进行 1 中的操作（检查该指令相关的其他指令是否为死指令，若是则放入`WorkList`中，最后把自身删除），直至`WorkList`为空。
+3. 在对函数遍历完成后，对`WorkList`中的指令进行再进行 1 中的操作（检查该指令相关的其他指令是否为死指令，若是则放入向量中，最后把自身删除），直至`WorkList`为空。
 
 ### 集合2 —— adce
 
@@ -76,7 +76,34 @@ define dso_local i32 @main() {
 
 #### 2. 用 Pass 进行优化的实例说明
 
+源 LLVM IR:
 
+```
+define dso_local i32 @main() #0 {
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  %3 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  store i32 1, i32* %2, align 4
+  ret i32 0
+}
+```
+
+可以看到，函数体内的第三行代码 %3 在之后没有被引用，是死代码。
+
+使用 ADCE 优化后的 LLVM IR:
+
+```
+define dso_local i32 @main() {
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  store i32 1, i32* %2, align 4
+  ret i32 0
+}
+```
+
+可以看到，通过 ADCE Pass 的作用，第三行无用的 `alloca`指令被成功删除，程序得到优化。
 
 #### 3. Pass 流程叙述
 
