@@ -212,6 +212,8 @@ static bool isUnconditionalBranch(Instruction *Term) {
 }
 
 void AggressiveDeadCodeElimination::initialize() {
+  // TODO 在initialize的时候就判断instr与block是否live
+
   auto NumBlocks = F.size();
 
   // We will have an entry in the map for each block so we grow the
@@ -240,6 +242,7 @@ void AggressiveDeadCodeElimination::initialize() {
   for (auto &BBInfo : BlockInfo)
     BBInfo.second.TerminatorLiveInfo = &InstInfo[BBInfo.second.Terminator];
 
+  // TODO 什么是“root” instrcution?
   // Collect the set of "root" instructions that are known live.
   for (Instruction &I : instructions(F))
     if (isAlwaysLive(I))
@@ -272,6 +275,7 @@ void AggressiveDeadCodeElimination::initialize() {
       }
     } State;
 
+    // TODO 如果有回边，标记为live？
     State.reserve(F.size());
     // Iterate over blocks in depth-first pre-order and
     // treat all edges to a block already seen as loop back edges
@@ -289,6 +293,7 @@ void AggressiveDeadCodeElimination::initialize() {
         }
     }
   }
+
 
   // Mark blocks live if there is no path from the block to a
   // return of the function.
@@ -309,6 +314,7 @@ void AggressiveDeadCodeElimination::initialize() {
       markLive(BlockInfo[DFNode->getBlock()].Terminator);
   }
 
+  // TODO
   // Treat the entry block as always live
   auto *BB = &F.getEntryBlock();
   auto &EntryInfo = BlockInfo[BB];
@@ -352,6 +358,7 @@ bool AggressiveDeadCodeElimination::isInstrumentsConstant(Instruction &I) {
 
 void AggressiveDeadCodeElimination::markLiveInstructions() {
   // Propagate liveness backwards to operands.
+  // TODO 将worklist中的每一项都标记live
   do {
     // Worklist holds newly discovered live instructions
     // where we need to mark the inputs as live.
@@ -359,10 +366,12 @@ void AggressiveDeadCodeElimination::markLiveInstructions() {
       Instruction *LiveInst = Worklist.pop_back_val();
       LLVM_DEBUG(dbgs() << "work live: "; LiveInst->dump(););
 
+      //TODO 标记指令为live
       for (Use &OI : LiveInst->operands())
         if (Instruction *Inst = dyn_cast<Instruction>(OI))
           markLive(Inst);
 
+      // TODO 标记phi node为live
       if (auto *PN = dyn_cast<PHINode>(LiveInst))
         markPhiLive(PN);
     }
@@ -381,12 +390,13 @@ void AggressiveDeadCodeElimination::markLive(Instruction *I) {
 
   LLVM_DEBUG(dbgs() << "mark live: "; I->dump());
   Info.Live = true;
-  Worklist.push_back(I);
+  Worklist.push_back(I); //TODO 
 
   // Collect the live debug info scopes attached to this instruction.
   if (const DILocation *DL = I->getDebugLoc())
     collectLiveScopes(*DL);
 
+  //TODO 将包含该活指令的block也标记为live？ 
   // Mark the containing block live
   auto &BBInfo = *Info.Block;
   if (BBInfo.Terminator == I) {
