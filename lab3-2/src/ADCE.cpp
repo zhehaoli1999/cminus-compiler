@@ -212,7 +212,8 @@ static bool isUnconditionalBranch(Instruction *Term) {
 }
 
 void AggressiveDeadCodeElimination::initialize() {
-  // TODO 在initialize的时候就判断instr与block是否live
+  // TODO initialize 的作用：初始化ＢlockinfoVec， 存储每个block的入口与terninator等
+  // TODO 将满足 isAlwaysLive()的指令
 
   auto NumBlocks = F.size();
 
@@ -230,7 +231,7 @@ void AggressiveDeadCodeElimination::initialize() {
     Info.Terminator = BB.getTerminator();
     Info.UnconditionalBranch = isUnconditionalBranch(Info.Terminator);
   }
-
+  
   // Initialize instruction map and set pointers to block info.
   InstInfo.reserve(NumInsts);
   for (auto &BBInfo : BlockInfo)
@@ -242,7 +243,7 @@ void AggressiveDeadCodeElimination::initialize() {
   for (auto &BBInfo : BlockInfo)
     BBInfo.second.TerminatorLiveInfo = &InstInfo[BBInfo.second.Terminator];
 
-  // TODO 什么是“root” instrcution?
+  // TODO 什么是“root” instrcution? -> isAlwaysLive()
   // Collect the set of "root" instructions that are known live.
   for (Instruction &I : instructions(F))
     if (isAlwaysLive(I))
@@ -294,7 +295,7 @@ void AggressiveDeadCodeElimination::initialize() {
     }
   }
 
-
+   // TODO ??
   // Mark blocks live if there is no path from the block to a
   // return of the function.
   // We do this by seeing which of the postdomtree root children exit the
@@ -329,7 +330,10 @@ void AggressiveDeadCodeElimination::initialize() {
 }
 
 bool AggressiveDeadCodeElimination::isAlwaysLive(Instruction &I) {
-  // TODO -- use llvm::isInstructionTriviallyDead
+  // tODO -- use llvm::isInstructionTriviallyDead
+
+
+  // TODO"an exception handling block" or "have side effect" 
   if (I.isEHPad() || I.mayHaveSideEffects()) {
     // Skip any value profile instrumentation calls if they are
     // instrumenting constants.
@@ -357,7 +361,7 @@ bool AggressiveDeadCodeElimination::isInstrumentsConstant(Instruction &I) {
 }
 
 void AggressiveDeadCodeElimination::markLiveInstructions() {
-  // Propagate liveness backwards to operands.
+  // Propagate liveness backwards to operands. // TODO 考虑operand 
   // TODO 将worklist中的每一项都标记live
   do {
     // Worklist holds newly discovered live instructions
@@ -534,6 +538,7 @@ bool AggressiveDeadCodeElimination::removeDeadInstructions() {
     }
   });
 
+  // TODO: what is a dead set
   // The inverse of the live set is the dead set.  These are those instructions
   // that have no side effects and do not influence the control flow or return
   // value of the function, and may therefore be deleted safely.
