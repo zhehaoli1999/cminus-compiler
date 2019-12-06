@@ -220,9 +220,21 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     // ret = builder.CreateCast()
 
     Type* TYPE32 = Type::getInt32Ty(context);
+    Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
+    
+    // !
+    // !
+    if(ret->getType() == TYPEARRAY_32){
+        ret = builder.CreateLoad(ret);
+    }
+    // !
+    // !
+
     if(ret->getType() == TYPE32){
         ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
     }
+    
+
     if(node.else_statement != nullptr){
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
@@ -410,12 +422,24 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         
         if(ret->getType() == TY32Ptr) lValue = builder.CreateLoad(TYPE32, ret);
         else lValue = ret;
+
         // lValue = builder.CreateLoad(TYPE32, ret);
         // lValue = ret;
         node.additive_expression_r.get()->accept(*this);
        
         if(ret->getType() == TY32Ptr) rValue = builder.CreateLoad(TYPE32, ret);
         else rValue = ret;
+
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        Type* TYPE1 = Type::getInt1Ty(context);
+        if (lValue->getType() == TYPE1){
+            lValue = builder.CreateIntCast(lValue, Type::getInt32Ty(context), false);
+        }
+        if (rValue->getType() == TYPE1){
+            rValue = builder.CreateIntCast(rValue, Type::getInt32Ty(context), false);
+        }
+        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
         // auto rValue = ret;
 
         Value* icmp ;   
