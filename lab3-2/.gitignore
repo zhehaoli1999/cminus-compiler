@@ -1,0 +1,3 @@
+/workspace
+/testcase/*
+!/testcase/*.c
