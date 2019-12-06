@@ -10,17 +10,14 @@ using namespace llvm;
 // You can define global variables here
 // to store state
 Value * ret;
-Type * retType;
-bool isParam = 0;
-bool isAssign = 0;
-// ConstantAggregateZero
+// Type * retType;
+// bool isParam = 0;
+// bool isAssign = 0;
 
 //store function for creating basic block
-int number;
-
-// std::vector<struct array> arrayList;
 Function * currentFunc;
 BasicBlock* expHandler;
+
 void CminusBuilder::visit(syntax_program &node) {
     // program → declaration-list 
     // just visit all declarations in declaration-list
@@ -43,13 +40,11 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
 
-    // std::cout<<"enter var declarations"<<std::endl;
     // Note that in param declaration, it just declare a pointer
     // But in var declarasiton, it should declare a array with its len
     if(!scope.in_global()){
         if(node.num){
         // TODO: local array
-            // std::cout<<"declare an array"<<std::endl;
 
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
@@ -60,13 +55,10 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
         } 
         else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
-            // AllocaInst* ldAlloc = new AllocaInst(TYPE32,node.num->value);
             scope.push(node.id, ldAlloc);
         }
     } else {
         if(node.num){
-            // std::cout<<"enter global array declarations"<<std::endl;
-            // TODO: global array
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             ConstantAggregateZero* zeroArray = ConstantAggregateZero::get(arrayType);
             auto gArrayAlloc = new GlobalVariable(*module, arrayType, false, GlobalVariable::LinkageTypes::CommonLinkage, zeroArray);
@@ -76,7 +68,6 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             // scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
-            // std::cout<<"enter global var declarations"<<std::endl;
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
             ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
@@ -97,7 +88,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPEV = Type::getVoidTy(context);
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
-    // std::cout<<"enter func declarations"<<std::endl;
     Type * funType = node.type == TYPE_VOID ? TYPEV : TYPE32;
 
     // function parameters' type
@@ -127,7 +117,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     builder.SetInsertPoint(funBB);
     
 
-    // std::cout<<"enter params declarations"<<std::endl;
     // Note that node.params are Syntrx Tree Node ptr, it can NOT be directly passed into function declaration list
     for(auto arg : node.params ) {
         arg.get()->accept(*this);
@@ -140,7 +129,6 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
     for (auto arg = funcFF->arg_begin(); arg != funcFF->arg_end(); arg++){
         args_value.push_back(arg);
     }
-    // std::cout<<"fucntion parameters: "<<args_value.size()<<std::endl;
     
     // assert node params size = args_value size
     if(node.params.size() > 0 && args_value.size() > 0){
@@ -148,15 +136,18 @@ void CminusBuilder::visit(syntax_fun_declaration &node) {
         for (auto arg : node.params){
             auto pAlloc = scope.find(arg->id);
             if(pAlloc == nullptr){
-                std::cout<<"[ERR] Function parameter "<<arg->id<<" is referred before declaration"<<std::endl;
                 exit(0);
             } else {
                 builder.CreateStore(args_value[i++], pAlloc);
             }
         }
     }
-    
-    node.compound_stmt->accept(*this);
+    if(node.compound_stmt != nullptr)
+        node.compound_stmt->accept(*this);
+    if(builder.GetInsertBlock()->getTerminator() == nullptr){
+        if(funType == TYPEV) builder.CreateRetVoid();
+        else if(funType == TYPE32) builder.CreateRet(CONST(0));
+    }
     if(expHandler){
         builder.SetInsertPoint(expHandler);
         auto neg_idx_except_fun = scope.find("neg_idx_except");
@@ -186,7 +177,6 @@ void CminusBuilder::visit(syntax_param &node) {
         scope.push(node.id, pAlloc);
     } else{
             // void
-            // std::cout<<"[ERR]Variable void"<<std::endl;
     }
 }
 
@@ -196,11 +186,10 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
     if(node.local_declarations.size() > 0){
         for(auto ld : node.local_declarations){
         // assert ld.type is INT
-        ld->accept(*this);
+            ld->accept(*this);
         }
     }
     
-    // std::cout<<node.statement_list.size()<<" enter term"<<std::endl;
     for(auto s : node.statement_list){
         s->accept(*this);
     }  
@@ -215,7 +204,6 @@ void CminusBuilder::visit(syntax_expresion_stmt &node) {
 
 void CminusBuilder::visit(syntax_selection_stmt &node) {
     // selection-stmt→ ​if ( expression ) statement∣ if ( expression ) statement else statement​
-    // std::cout<<"enter selection statement"<<std::endl;
     node.expression->accept(*this);
     // ret = builder.CreateCast()
 
@@ -282,13 +270,12 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
 
 void CminusBuilder::visit(syntax_iteration_stmt &node) {
     // iteration-stmt→while ( expression ) statement
-    // std::cout<<"enter selection statement"<<std::endl;
     auto loopJudge = BasicBlock::Create(context, "loopJudge", currentFunc);
     auto loopBody = BasicBlock::Create(context, "loopBody", currentFunc);
     auto out = BasicBlock::Create(context, "outloop", currentFunc);
     Type* TYPE32 = Type::getInt32Ty(context);
     Type* TYPE1 = Type::getInt1Ty(context);
-    builder.CreateBr(loopJudge);
+    if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(loopJudge);
     
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
@@ -299,13 +286,12 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
 
     builder.SetInsertPoint(loopBody);
     node.statement->accept(*this);
-    builder.CreateBr(loopJudge);
+    if(builder.GetInsertBlock()->getTerminator() == nullptr) builder.CreateBr(loopJudge);
 
     builder.SetInsertPoint(out);
 }
 
 void CminusBuilder::visit(syntax_return_stmt &node) {
-    // std::cout<<"enter return"<<std::endl;
     if(node.expression == nullptr){
         builder.CreateRetVoid();
     } else {
@@ -321,7 +307,6 @@ void CminusBuilder::visit(syntax_return_stmt &node) {
 
 void CminusBuilder::visit(syntax_var &node) {
 
-    // std::cout<<"enter var:"<<node.id<<std::endl;
     Type* TY32Ptr= PointerType::getInt32PtrTy(context);
     Type* TYPE1 = Type::getInt1Ty(context);
     Type* TYPE32 = Type::getInt32Ty(context);
@@ -342,8 +327,7 @@ void CminusBuilder::visit(syntax_var &node) {
 
 
             // 判断数组指数为负
-            /***/
-            if(!expHandler) expHandler = BasicBlock::Create(context," expHandler", currentFunc);
+            if(!expHandler) expHandler = BasicBlock::Create(context,"expHandler", currentFunc);
             auto normalCond = BasicBlock::Create(context, "normalCond", currentFunc);
             auto exp = builder.CreateICmpSLT(num, CONST(0));
             builder.CreateCondBr(exp, expHandler, normalCond);
@@ -375,7 +359,6 @@ void CminusBuilder::visit(syntax_var &node) {
 
     }
     else{
-        std::cout<<"[ERR] undefined variable: "<<node.id<<std::endl;
         exit(0);
     }
 }
@@ -410,7 +393,6 @@ void CminusBuilder::visit(syntax_assign_expression &node) {
 void CminusBuilder::visit(syntax_simple_expression &node) {
     // simple-expression → additive-expression relop additive- expression | additive-expression
 
-    // std::cout<<"enter simple-expression"<<std::endl;
     node.additive_expression_l.get()->accept(*this);
 
     // 按照 simple-expression → additive-expression relop additive- expression
@@ -443,7 +425,6 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         // auto rValue = ret;
 
         Value* icmp ;   
-        // std::cout<<"enter get type"<<std::endl;
         switch (node.op)
         {
             case OP_LE:
@@ -478,7 +459,6 @@ void CminusBuilder::visit(syntax_additive_expression &node) {
     
     // 按照 additive-expression → term 
     if(node.additive_expression == nullptr){
-        // std::cout<<"enter additive-expression -> term"<<std::endl;
         // It seems that it doesn't matter whether use shared-ptr.get() or not to refer to its member function
         node.term.get()->accept(*this);
     } 
@@ -524,8 +504,6 @@ void CminusBuilder::visit(syntax_term &node) {
     // term → term mulop factor | factor
     // 按照 term -> factor
     if(node.term == nullptr){
-        // std::cout<<node.factor<<std::endl;
-        // std::cout<<"enter factor"<<std::endl;
         if(node.factor != nullptr) 
             node.factor->accept(*this);
     }
@@ -566,13 +544,11 @@ void CminusBuilder::visit(syntax_term &node) {
 }
 
 void CminusBuilder::visit(syntax_call &node) {
-    // std::cout<<"enter call"<<std::endl;
     auto fAlloc = scope.find(node.id);
     Type* TYPE32 = Type::getInt32Ty(context);
     auto TYPEARRAY = ArrayType::getInt32Ty(context);
 
     if(fAlloc == nullptr){
-        std::cout<<"[ERR]Function"<<node.id<<"is referred before declaration"<<std::endl;
         exit(0);
     } 
     else {

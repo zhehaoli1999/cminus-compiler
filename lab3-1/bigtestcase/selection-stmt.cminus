@@ -14,10 +14,4 @@ void main(void)
 		return;
 	}
 
-	if (i > 0) {
-		j = 1;
-	}
-	else if (i == 0) {
-		j = 2;
-	}
 }
