@@ -76,7 +76,34 @@ define dso_local i32 @main() {
 
 #### 2. 用 Pass 进行优化的实例说明
 
+源 LLVM IR:
 
+```
+define dso_local i32 @main() #0 {
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  %3 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  store i32 1, i32* %2, align 4
+  ret i32 0
+}
+```
+
+可以看到，函数体内的第三行代码 %3 在之后没有被引用，是死代码。
+
+使用 ADCE 优化后的 LLVM IR:
+
+```
+define dso_local i32 @main() {
+  %1 = alloca i32, align 4
+  %2 = alloca i32, align 4
+  store i32 0, i32* %1, align 4
+  store i32 1, i32* %2, align 4
+  ret i32 0
+}
+```
+
+可以看到，通过 ADCE Pass 的作用，第三行无用的 `alloca`指令被成功删除，程序得到优化。
 
 #### 3. Pass 流程叙述
 
