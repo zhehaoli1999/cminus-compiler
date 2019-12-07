@@ -136,7 +136,7 @@ define dso_local i32 @main() {
 
 1. 遍历输入函数的每一个基本块，建立BlockInfoVec。遍历每一个基本块里面的指令，建立InstruInfo。用于保存指令和基本块相关的信息。
 
-2. 标记always live的指令（也称为“root” instruction），相应的，将这些always live的指令所在的块也标记成live。（在markLive函数中执行）always live的指令是以下几类指令：不进行instrumenting constants分析的 
+2. 标记always live的指令（也称为“root” instruction），相应的，将这些always live的指令所在的块也标记成live。（在markLive函数中执行）always live的指令是以下几类指令：不进行instrumenting constants分析的 :
    1. 异常处理指令 
    2. 有side-effects（a.写内存如malloc and alloca或者 b.可能进行抛出异常操作）的指令。
 
