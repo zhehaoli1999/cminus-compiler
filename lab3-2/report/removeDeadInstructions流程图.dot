@@ -1,9 +1,0 @@
-digraph "removeDeadInstructions流程图" {
-    label="removeDeadInstructions流程图";
-
-    n1 [shape=record,label="1.更新dead region，通过对控制流进行一定的修改，\n保证删除死block后，程序的分支仍能够保证程序正确exit。"]; 
-    n2 [shape=record,label="2.删除死指令"];
-    n3 [shape=record,label="3.结束"];
-    
-    n1->n2 ->n3 
-}

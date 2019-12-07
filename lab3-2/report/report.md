@@ -105,38 +105,32 @@ define dso_local i32 @main() {
 
 可以看到，通过 ADCE Pass 的作用，第三行无用的 `alloca`指令被成功删除，程序得到优化。
 
-#### 3. Pass 流程叙述
+#### 3. Pass 介绍
 
+#### 3.1 关键变量及所设计的概念
 
-**激进地删除死代码：给定程序先认为所有块均为死代码，初始化其中一定为活的块(如入口块等), 迭代地找到所有可以证明可能为活的块, 直到不再能找到新的活的块。在程序的最后删除除活的块以外的块**
-
-
-
-## 3.1 关键变量及所设计的概念
-1. **PDT**(post dominance tree): 指后向支配树。其以`Exit Program`的节点为根
-2. CFG: 控制流图
-3. InstInfo: 将每一条指令与其对应的指令信息InstInfoType存放在一个向量中,其中InstInfoType包含指令是否为live以及指令所在的basicblock。
-4. BlockInfo: 将每一个块与其对应的指令信息BlockInfoType存放在一个向量中，其中InstInfoType包含当前块是否为live以及当前块的terminator等信息。
-5. **WorkList**: 已知为活的指令集合，有待标记其定值指令(及$\Phi$节点为活)为活
+1. **PDT(post dominance tree)**: 后向支配树。其以`Exit Program`的节点为根
+2. **CFG(Control Flow Graph)**: 控制流图
+3. **InstInfo**: 将每一条指令与其对应的指令信息InstInfoType存放在一个向量中,其中InstInfoType包含指令是否为live以及指令所在的basicblock。
+4. **BlockInfo**: 将每一个块与其对应的指令信息BlockInfoType存放在一个向量中，其中InstInfoType包含当前块是否为live以及当前块的terminator等信息。
+5. **WorkList**: 已知为活的指令集合，有待标记其定值指令(及phi节点)为活
 6. **BlobcksWithDeadTerminator**: 目前没有发现有live terminator 的BasicBlock
 7. **DEAD terminator**: 指程序**一定不会**达到的terminator 
 8. **LIVE terminator**: 指程序**可能**到达的terminator
- 
 
-### 分析
-1. 为什么需要分别维护`DEAD terminator` 和`DEAD Block`
+    Note:为什么需要分别维护`DEAD terminator` 和`DEAD Block`
     事实上在标记Terminator为活的同时会将该block标记为活(还会将其所在块的后继标记为活)。只有在最后重写控制流图时才会单独标记terminator为活。
 
 
-## 3.2 总体框架
+#### 3.2 总体框架
 与其他pass类相同，主要需要重载以下三个函数。在优化过程中顺序调用
 1. Initialization(): 找到必然为活的块，记录块终结符的信息
-2. markLiveInstructions()：找到为活的块
+2. markLiveInstructions()：进一步分析，找出其余为活的块
 3. removeDeadInstructions()：根据已知死块重写控制流，删除死代码
 
 以下将分别介绍三个函数的主要含义，具体步骤以及分析其中一些步骤需要执行的原因。
 
-### 主要函数1: Initialization()执行步骤: 
+#### 主要函数1: Initialization()执行步骤: 
 
 ![](./images/initial流程图.png)
 
@@ -148,13 +142,11 @@ define dso_local i32 @main() {
 
 3. 如果一个basicblockA是死的，但是在dom tree中该basicblock指向活blockB，那么把这个block的terninator标记为live。 相应的，此指令所在的块也标记成live。
 
-4. 已知一个块一定有terminator，PDT的跟节点是一个Exit Program的虚拟节点。
-   如果PDT的第一层孩子的终结符不是无条件跳转语句，则将PDT的第一层孩子bb(即到PDT的不是无条件跳转的)的孩子全部标记为live
-   <!-- （terminator可以是br或者return） 且Post dom tree的root 节点的第一个孩子一定是一个return语句。因为函数在CFG中总有exit出口，就算中间有无限循环，无限循环的false在CFG中仍然会指向之后的节点。那么，把Post dom tree中不包含return语句的块的terminator都标记成活的。这样做是因为这些块有可能指向含有return语句的块。相应的，这些块也变成活的了。（但不代表这些块中的所有intruction都是活的。） -->
-
-    同时将回边的头所在的块的终结符标记为活
+4. 已知一个块一定有terminator，PDT的根节点是一个Exit Program的虚拟节点。
+   如果PDT的第一层孩子的终结符不是return语句，则将PDT的第一层孩子bb(即到PDT的不是无条件跳转的)的孩子全部标记为live。同时将回边的头所在的块的终结符标记为活。
 
 5. 设定程序入口块为活(但是其终结符不一定为活)
+
 6. 最后，将包含死terminator的块放到 BlocksWithDeadTerminators中。
 
   一个例子：
@@ -184,16 +176,17 @@ define dso_local i32 @main() {
 对worklist进行迭代处理，分别标记数据流和控制流中的活指令，具体步骤如下
 1. 对数据流进行迭代
    1. 首先，遍历已经确定是活的指令的操作数，将含有这些操作数对应的定值指令也标记成活的。
-   2. 如果这个活指令涉及phi node(即，这个live instruction的operation依赖程序的data flow。LLVM官方文档中对PHI (Φ) nodes的描述如下：
+   2. 如果这个活指令涉及phi node，即，这个live instruction的operand依赖程序的data flow。LLVM官方文档中对PHI (Φ) nodes的描述如下：
 
     >  A consequence of single assignment are PHI (Φ) nodes. These are required when a variable can be assigned a different value based on the path of control flow.
-    )，那么在当前块中创建一个phi node，将这个phi node 标记为live。注意，有live phi node的block在CFG图（control flow 图）中的前驱一定要是CFlive的，即control flow live。这些control flow live的前驱 block称为 NewLiveBlocks。
+
+    那么在当前块中得到指向phi node的指针，将这个phi node 标记为live。注意，有live phi node的block在CFG图（control flow 图）中的前驱一定要是CFlive的，即control flow live。这些control flow live的前驱 block称为 NewLiveBlocks。
 
 2. 根据控制流的依赖关系，标记控制流中的活分支(`markLiveBranchesFromControlDependences`)
    记其中的一个Block With Dead Terminator为A。如果A是一个NewLiveBlock B 的 control dependence source，即B的执行依赖于A，那么A的teminator肯定要是活的，否则B不能执行。所以修改A的terminator的live属性为live，相应地A变为live。 
    详细分析见下3.4.1
 
-**小结** markLiveInstructions()基于初始化的结果，通过对operand的分析，进一步标记了可能的全部live指令。
+**总结** markLiveInstructions()基于初始化的结果，通过对operand的分析，进一步标记了可能的全部live指令。
 
 #### 3.4.1 markLiveBranchesFromControlDependences
 
@@ -222,11 +215,26 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 
 ### 主要函数3: removeDeadInstructions
 
-1. 更新dead region. 什么是dead region？
+1. 使用updateDeadRegions函数更新dead region. 
 
 > A dead region is the set of dead blocks with a common live post-dominator.
 
-更新dead region的目的是通过对控制流进行一定的修改（加入unconditional branch），保证删除死block后，程序的分支仍然能够保证活block一定能被执行到， 以及保证程序能正确exit。
+更新dead region的目的是通过对控制流进行一定的修改（加入unconditional branch），保证删
+除死block后，程序的分支仍然能够保证活block一定能被执行到， 以及保证程序能正确exit。
+  
+  **updateDeadRegions()**
+
+  由于死代码的删除可能涉及控制流语句，故需要找到在控制流图中与含有死终结符的块相关的块(如其后继), 重写其相关的控制流图(control flow graph), 以确保在删除相关死代码后，控制流可正常跳转。以上操作主要封装在`updateDeadRegions`函数中
+
+  此时，程序已经标记所有活块，则当前仍然含有死终结符的块一定为为死块。如果在保证控制流逻辑不变的情况下删除该部分的死块需要考虑与该块相关的活边是否能正常跳转。
+
+  基于以上分析，该函数完成了以下操作
+  1. 遍历所有含有死终结符的块
+  2. 如果该块的终结符是无条件跳转语句，则将其直接标记为活，并return。如果不是继续执行以下步骤
+  3. 找到后序意义上最近的后继, 创建一条无条件跳转到该块的指令，并将该指令标记为活
+  4. 告知其在PDT上的所有孩子节点，该前驱为死(使得该孩子块中的PhiNode知道应该选择哪个值)
+  5. 删除块到孩子块的边(除了该块到最大后继的块)
+
 
 2. 删除死指令。
 
@@ -234,35 +242,16 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 **总结**：removeDeadInstructions() 执行一些删除死指令的善后工作。
 
 
-#### updateDeadRegions
-由于死代码的删除可能涉及控制流语句，故需要找到在控制流图中与含有死终结符的块相关的块(如其后继), 重写其相关的控制流图(control flow graph), 以确保在删除相关死代码后，控制流可正常跳转。以上操作主要封装在`updateDeadRegions`函数中
 
-此时，程序已经标记所有活块，则当前仍然含有死终结符的块一定为为死块。如果在保证控制流逻辑不变的情况下删除该部分的死块需要考虑与该块相关的活边是否能正常跳转。
-
-基于以上分析，该函数完成了以下操作
-1. 遍历所有含有死终结符的块
-2. 如果该块的终结符是无条件跳转语句，则将其直接标记为活，并return。如果不是继续执行以下步骤
-3. 找到后序意义上最近的后继, 创建一条无条件跳转到该块的指令，并将该指令标记为活
-4. 告知其在PDT上的所有孩子节点，该前驱为死(使得该孩子块中的PhiNode知道应该选择哪个值)
-5. 删除块到孩子块的边(除了该块到最大后继的块)
-
-
-<<<<<<< HEAD
 ### 分析DCE和ADCE的相同点与不同点
 
 #### 相同点
 1. 在执行过程上：两者都是维护一个worklist，即不断迭代该变量，并分析新产生的活/死代码，直到没有新产生的代码。
-2. 
 
 #### 不相同点
 1. 两者的假设不同：DCE是基于假设所有代码都是活的，找到死代码。而ADCE是基于假设所有代码是死的，找到活代码。
-=======
-
-
-## 实验总结
-
->>>>>>> 02db2dea8dec0cdcb9c48804045be21ed12f985b
+2. ADCE在判断一个指令是否为活的逻辑比DCE复杂很多，对PDT等控制流有更深入的分析。
 
 ## 实验总结
 
-本次实验中针对两种死代码删除的情况进行了分析，进一步学习了llvm相关的优化操作。
+本次实验中针对两种死代码删除的方法DCE，ADCE进行了分析，进一步学习了llvm相关的优化操作，对llvm源代码有了更深入的了解。
