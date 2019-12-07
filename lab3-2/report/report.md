@@ -149,6 +149,10 @@ define dso_local i32 @main() {
 
 4. 已知一个块一定有terminator。（terminator可以是br或者return） 且Post dom tree的root 节点的第一个孩子一定是一个return语句。因为函数在CFG中总有exit出口，就算中间有无限循环，无限循环的false在CFG中仍然会指向之后的节点。那么，把Post dom tree中不包含return语句的块的terminator都标记成活的。这样做是因为这些块有可能指向含有return语句的块。相应的，这些块也变成活的了。（但不代表这些块中的所有intruction都是活的。）
 
+    下图是一颗post dom tree.
+
+    ![](./images/postdom_ADCE_if.png)
+
 5. 然后，一个函数的入口块一定是活的，不然这个函数没法执行。
 
 
