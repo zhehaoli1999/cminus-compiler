@@ -115,19 +115,17 @@ define dso_local i32 @main() {
 ## 3.1 关键变量及所设计的概念
 1. **PDT**(post dominance tree): 指后向支配树。其以`Exit Program`的节点为根
 2. CFG: 控制流图
-3. InstInfo: 将每一条指令与其对应的指令信息InstInfoType存放在一个向量中
-4. BlockInfo: 将每一个块与其对应的指令信息BlockInfoType存放在一个向量中
+3. InstInfo: 将每一条指令与其对应的指令信息InstInfoType存放在一个向量中,其中InstInfoType包含指令是否为live以及指令所在的basicblock。
+4. BlockInfo: 将每一个块与其对应的指令信息BlockInfoType存放在一个向量中，其中InstInfoType包含当前块是否为live以及当前块的terminator等信息。
 5. **WorkList**: 已知为活的指令集合，有待标记其定值指令(及$\Phi$节点为活)为活
 6. **BlobcksWithDeadTerminator**: 目前没有发现有live terminator 的BasicBlock
 7. **DEAD terminator**: 指程序**一定不会**达到的terminator 
-8. **LIVE terminator**: 指程序**可能**到达的terminator 
-
-
+8. **LIVE terminator**: 指程序**可能**到达的terminator
+ 
 
 ### 分析
 1. 为什么需要分别维护`DEAD terminator` 和`DEAD Block`
     事实上在标记Terminator为活的同时会将该block标记为活(还会将其所在块的后继标记为活)。只有在最后重写控制流图时才会单独标记terminator为活。
-
 
 
 ## 3.2 总体框架
@@ -139,6 +137,8 @@ define dso_local i32 @main() {
 以下将分别介绍三个函数的主要含义，具体步骤以及分析其中一些步骤需要执行的原因。
 
 ### 主要函数1: Initialization()执行步骤: 
+
+![](./images/initial流程图.png)
 
 1. 遍历输入函数的每一个基本块，建立BlockInfoVec。遍历每一个基本块里面的指令，建立InstruInfo。用于保存指令和基本块相关的信息。
 
@@ -152,27 +152,24 @@ define dso_local i32 @main() {
    如果PDT的第一层孩子的终结符不是无条件跳转语句，则将PDT的第一层孩子bb(即到PDT的不是无条件跳转的)的孩子全部标记为live
    <!-- （terminator可以是br或者return） 且Post dom tree的root 节点的第一个孩子一定是一个return语句。因为函数在CFG中总有exit出口，就算中间有无限循环，无限循环的false在CFG中仍然会指向之后的节点。那么，把Post dom tree中不包含return语句的块的terminator都标记成活的。这样做是因为这些块有可能指向含有return语句的块。相应的，这些块也变成活的了。（但不代表这些块中的所有intruction都是活的。） -->
 
-    下图是一颗post dom tree.
-
-    ![](./images/postdom_ADCE_if.png)
-
     同时将回边的头所在的块的终结符标记为活
 
 5. 设定程序入口块为活(但是其终结符不一定为活)
 6. 最后，将包含死terminator的块放到 BlocksWithDeadTerminators中。
-例子：
 
-```c
-int main{
-    ...
-    return 0;
-    if(a>0) return 1;
-    ...
-}
-```
+  一个例子：
+
+  ```c
+  int main{
+      ...
+      return 0;
+      if(a>0) return 1;
+      ...
+  }
+  ```
 
 这里``if(a>0)`` 和``return 1``两个块是BlocksWithDeadTerminators。
-``if(a>0)``这个块不包含return语句，为什么不标记成活的？这是因为这个块不在post dom tree中(在clang生成中间代码过程中已经将其优化删除)。函数要结束直接从return 0这个块结束。所以没有一条路径经过if(a>0)到达函数的exit,因此if(a>0)这个块就谈不上dom。
+``if(a>0)``这个块不包含return语句，为什么不标记成活的？这是因为这个块不在post dom tree中(在clang生成中间代码过程中已经将其优化删除)。
 
 7. 补充：如果一个块是live的，且其terminator是无条件跳转，那么把其terminator也标记成live。（在MarkLive()中执行。）
 
@@ -181,6 +178,9 @@ int main{
 
 
 ### 主要函数2: markLiveInstructions()
+
+![](./images/markLiveInstruction.png)
+
 对worklist进行迭代处理，分别标记数据流和控制流中的活指令，具体步骤如下
 1. 对数据流进行迭代
    1. 首先，遍历已经确定是活的指令的操作数，将含有这些操作数对应的定值指令也标记成活的。
@@ -196,6 +196,9 @@ int main{
 **小结** markLiveInstructions()基于初始化的结果，通过对operand的分析，进一步标记了可能的全部live指令。
 
 #### 3.4.1 markLiveBranchesFromControlDependences
+
+![](./images/removeDeadIntr流程图.png)
+
 该函数总体利用后向推理，要义是：迭代地考虑NewLiveBlocks, 找到依赖的控制流块(即在控制流中为其支配的块)，则标记为live(相关注释如下所示)。可以发现如果一个块为live，即程序可能执行到该处，则其控制依赖的块也可能执行到该处，则通过这种思想则可以根据初始化中判断的常活(isAlwaysLive)的块后向推理出活块。
 
 >The dominance frontier of a live block X in the reversecontrol graph is the set of blocks upon which X is controldependent. 
@@ -244,6 +247,7 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 5. 删除块到孩子块的边(除了该块到最大后继的块)
 
 
+<<<<<<< HEAD
 ### 分析DCE和ADCE的相同点与不同点
 
 #### 相同点
@@ -252,6 +256,12 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 
 #### 不相同点
 1. 两者的假设不同：DCE是基于假设所有代码都是活的，找到死代码。而ADCE是基于假设所有代码是死的，找到活代码。
+=======
+
+
+## 实验总结
+
+>>>>>>> 02db2dea8dec0cdcb9c48804045be21ed12f985b
 
 ## 实验总结
 

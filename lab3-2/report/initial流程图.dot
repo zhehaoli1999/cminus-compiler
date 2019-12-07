@@ -1,0 +1,12 @@
+digraph "Initial流程图" {
+    label="Initial流程图";
+
+    n1 [shape=record,label="1.构建BlockInfo与InstInfo用于保存基本块和指令的信息"]; 
+    n2 [shape=record,label="2.将满足isAlwaysLive()条件的指令标记成live"];
+    n3 [shape=record,label="3.先序遍历CFG图，将有回边的块中的terminator指令标记成live"];
+    n4 [shape=record,label="4.遍历PostDomTree根节点的孩子结点，若某孩子结点不含有return语句，\n则将该孩子所在子树上的所有结点（为基本块）标记成live"];
+    n5 [shape=record,label="5.将函数F的入口basicblock标记成live"];
+    n6 [shape=record,label="6.将包含死terminator的块放到 BlocksWithDeadTerminators中"];
+    n1->n2 ->n3 -> n4 -> n5 -> n6
+
+}
