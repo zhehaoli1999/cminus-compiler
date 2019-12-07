@@ -151,7 +151,7 @@ define dso_local i32 @main() {
 
 7. 补充：如果一个块是live的，且其terminator是无条件跳转，那么把其terminator也标记成live。（在MarkLive()中执行。）
 
-**总结**：Initialization是在执行过程通过初步分析，将该标为live的指令都标为live，相应的这些指令所在的块也变成live。被标记为活的指令会被放到worklist中。
+**总结** ：Initialization是在执行过程通过初步分析，将该标为live的指令都标为live，相应的这些指令所在的块也变成live。被标记为活的指令会被放到worklist中。
 
 
 
@@ -172,7 +172,7 @@ define dso_local i32 @main() {
    记其中的一个Block With Dead Terminator为A。如果A是一个NewLiveBlock B 的 control dependence source，即B的执行依赖于A，那么A的teminator肯定要是活的，否则B不能执行。所以修改A的terminator的live属性为live，相应地A变为live。 
    详细分析见下3.4.1
 
-**总结** markLiveInstructions()基于初始化的结果，通过对operand的分析，进一步标记了可能的全部live指令。
+**总结** ： markLiveInstructions()基于初始化的结果，通过对operand的分析，进一步标记了可能的全部live指令。
 
 #### 3.4.1 markLiveBranchesFromControlDependences
 
@@ -225,7 +225,7 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 2. 删除死指令。
 
 
-**总结**：removeDeadInstructions() 执行一些删除死指令的善后工作。
+**总结** ：removeDeadInstructions() 执行一些删除死指令的善后工作。
 
 
 
@@ -241,3 +241,5 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 ## 实验总结
 
 本次实验中针对两种死代码删除的方法DCE，ADCE进行了分析，进一步学习了llvm相关的优化操作，对llvm源代码有了更深入的了解。
+
+在本次实验中，我们不仅学习到了关于编译原理中间代码优化的相关知识，还掌握了 LLVM IR Pass 相关工具链的使用。通过对所选Pass进行分析，基本理解了所选程序的工作流程。在团队配合完成任务的过程中，还增强了团队的协作能力，收获颇丰。
