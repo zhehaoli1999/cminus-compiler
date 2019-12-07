@@ -340,7 +340,7 @@ void AggressiveDeadCodeElimination::initialize() {
 bool AggressiveDeadCodeElimination::isAlwaysLive(Instruction &I) {
   // tODO -- use llvm::isInstructionTriviallyDead
 
-
+   
   // TODO"an exception handling block" or "have side effect" 
   if (I.isEHPad() || I.mayHaveSideEffects()) {
     // Skip any value profile instrumentation calls if they are
