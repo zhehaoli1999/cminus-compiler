@@ -1,6 +1,7 @@
-int main(void){
+void main(void){
   int a;
-  int i;
+  a = 1;
+  /*int i;
   a = 10;
   i = 0;
   while(i < 10){
@@ -9,7 +10,7 @@ int main(void){
     if(a > 5){
       output(a);
     }
-  }
+  }*/
   while(1)
-    return a;
+    return ;
 }

@@ -1,9 +1,0 @@
-int call(int a, int b){
-	return 1;
-}
-void main(void)
-{
-	int a;int b;int c;int d;
-	output(call(a=a=b+c,call(call(b>a,a=c))));
-	return;
-}
