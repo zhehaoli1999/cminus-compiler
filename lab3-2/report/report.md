@@ -138,7 +138,7 @@ define dso_local i32 @main() {
 
 2. 标记always live的指令（也称为“root” instruction），相应的，将这些always live的指令所在的块也标记成live。（在markLive函数中执行）always live的指令是以下几类指令：不进行instrumenting constants分析的 
    1. 异常处理指令 
-   2. 2.有side-effects（a.写内存如malloc and alloca或者 b.可能进行抛出异常操作）的指令。
+   2. 有side-effects（a.写内存如malloc and alloca或者 b.可能进行抛出异常操作）的指令。
 
 3. 如果一个basicblockA是死的，但是在dom tree中该basicblock指向活blockB，那么把这个block的terninator标记为live。 相应的，此指令所在的块也标记成live。
 
@@ -149,27 +149,13 @@ define dso_local i32 @main() {
 
 6. 最后，将包含死terminator的块放到 BlocksWithDeadTerminators中。
 
-  一个例子：
-
-  ```c
-  int main{
-      ...
-      return 0;
-      if(a>0) return 1;
-      ...
-  }
-  ```
-
-这里``if(a>0)`` 和``return 1``两个块是BlocksWithDeadTerminators。
-``if(a>0)``这个块不包含return语句，为什么不标记成活的？这是因为这个块不在post dom tree中(在clang生成中间代码过程中已经将其优化删除)。
-
 7. 补充：如果一个块是live的，且其terminator是无条件跳转，那么把其terminator也标记成live。（在MarkLive()中执行。）
 
 **总结**：Initialization是在执行过程通过初步分析，将该标为live的指令都标为live，相应的这些指令所在的块也变成live。被标记为活的指令会被放到worklist中。
 
 
 
-### 主要函数2: markLiveInstructions()
+#### 主要函数2: markLiveInstructions()
 
 ![](./images/markLiveInstruction.png)
 
@@ -213,7 +199,7 @@ NewLiveBlocks指在初始化和数据流分析过程中新发现的活块; 将�
 1. 在最后一步中标记终结符为live时，如果该终结符是非条件跳转语句会触发将其所在的块所有后继块全部标记为活的操作，即将其将其加入NewLiveBlocks。在函数的哪一部分迭代计算了NewLiveBlocks的控制前驱？
   在markLiveInstructions中有**大**迭代循环处理了这种情况。
 
-### 主要函数3: removeDeadInstructions
+#### 主要函数3: removeDeadInstructions
 
 1. 使用updateDeadRegions函数更新dead region. 
 
