@@ -2,7 +2,7 @@ digraph "markLiveInstruction流程图" {
     label="markLiveInstruction流程图";
 
     n1 [shape=record,label="1.得到initial中已经确定是活指令的操作数，将对这些操作数定值的指令标记成live"]; 
-    n2 [shape=record,label="2.对已标记为活指令含有的Φ node 标记为活。\n 并更新"];
+    n2 [shape=record,label="2.对已标记为活指令含有的Φ node 标记为活。\n 并更新NewLiveBlocks"];
     n3 [shape=record,label="3.使用markLiveBranchesFromControlDependences()函数,\n 对BlocksWithDeadTerminators中的basicblock进一步分析
     ,\n 依据它们在NewLiveBlocks控制流中的角色更新其terminator的live属性"];
     
