@@ -10,19 +10,23 @@
 ## 报告内容 
 
 #### 1. RISC-V 机器代码的生成和运行
-
-##### LLVM 8.0.1适配RISC-V
+注：本部分中生成的`gcd.ll`、`gcd.riscv`均在`/report/gcd/`目录下
+##### 1.1 LLVM 8.0.1适配RISC-V
   **Step 1**: 安装riscv-tools
   ```bash
   git clone https://github.com/riscv/riscv-tools.git
   git submodule update --init --recursive
+  ./build.sh
   ```
+  实际执行以上命令时有报错，解决方案在**Trouble Shooting**中详述
+
   该仓库包含以下模块
   - Spike: the ISA simulator
   - riscv-tests: a battery of ISA-level tests
   - riscv-opcodes: the enumeration of all RISC-V opcodes executable by the simulator
   - riscv-pk: which contains bbl, a boot loader for Linux and similar OS kernels, and pk, a proxy kernel that services system calls for a target-machine application by forwarding them to the host machine
   
+  编译完后，应当注意大部分可以执行文件都会安装到$RISCV/bin目录，但pk的默认没有安装(解决方案在**Trouble Shooting**中详述)。
   **Step 2**: 安装`riscv-gnu-toolchains`(此部分中由于网速问题利用了@ibug提供的镜像)
   ```bash
   git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
@@ -39,9 +43,8 @@
   ./configure --prefix=$RISCV
   make
   ```
-  ......
 
-##### lab3-0 GCD样例 LLVM IR 生成 RISC-V源码的过程
+##### 1.2 lab3-0 GCD样例 LLVM IR 生成 RISC-V源码的过程
   生成的`gcd.ll`、`gcd.riscv`均在`/report/gcd/`目录下
 
   执行以下命令，将gcd的LLVM IR生成RISC-V源码
@@ -52,7 +55,7 @@
   ```
   
 
-##### 安装 Spike模拟器并运行上述生成的RISC-V源码
+##### 1.3 安装 Spike模拟器并运行上述生成的RISC-V源码
   在第一步中已经安装成功spike模拟器。
 
   执行以下命令即可成功运行。
@@ -60,12 +63,20 @@
   riscv64-unknown-elf-gcc gcd.s -o gcd.riscv
   ```
   ![](figs/gcd-spike.png)
+  执行`Hello world`程序
+  ![](figs/hello-spike.png)
+  说明可以正确执行。
 
 ##### Trouble Shooting
 以下部分将总结在配置环境中遇到的bug以及处理方法
 
 1. 在编译`riscv-gnu-toolchains`遇到`Permission denied`的bug
-   这个bug是一个常见情况，一般只需要在sudo权限下运行即可。但是在实际实验过程中发现，sudo指令可能覆盖了之前配置的环境变量，导致连接的gcc不是`riscv-gnu-toolchains`内的gcc，而是系统原生的gcc。所以应该在sudo命令中手动添加该环境变量
+   这个bug是一个常见情况，一般只需要在sudo权限下运行即可。但是在实际实验过程中发现，sudo指令可能覆盖了之前配置的环境变量，导致连接的执行文件环境变量是系统原生的可执行文件。所以应该在sudo命令中手动添加该环境变量
+   
+   如在编译`riscv-tools`时应当执行
+   ```bash
+   sudo RISCV=/opt/riscv ./build.sh
+   ```
 2. 运行生成的中间代码时无法找到正确的llc
    如果直接执行
    ```bash
@@ -87,25 +98,29 @@
    ```bash
    spike pk gcd.riscv
    ```
+
    报错
-   ```
+
+   ```bash
    terminate called after throwing an instance of 'std::runtime_error'
    what():  couldn't allocate 2147483648 bytes of target memory
    Aborted (core dumped)
-  ```
-  按照stackoverflow上的指示限制内存运行
-  ```bash
-  spike -m128 pk gcd.riscv 
-  ```
-  也将仍然报错。
+   ```
+
+    按照stackoverflow上的指示限制内存运行
+
+    ```bash
+    spike -m128 pk gcd.riscv 
+    ```
+    也将仍然报错。
 
    该情况实际上是Spike模拟器在`riscv-gnu-toolchains`安装过程中出现了问题。参考[riscv-pk仓库](https://github.com/riscv/riscv-pk/)给出的手动编译的指令，需要在`riscv-tools/riscv-pk/build`重新编译。此时sudo权限下运行编译指令时同样应当配置环境变量。
-  ```bash
-  sudo RISCV=/opt/riscv ../configure --prefix=$RISCV --host=riscv64-unknown-elf
-  sudo RISCV=/opt/riscv PATH=/opt/riscv/bin:$PATH make
-  sudo RISCV=/opt/riscv PATH=/opt/riscv/bin:$PATH make install
-  ```
-  重新运行`spike pk gcd.riscv`, 即可正常运行。
+    ```bash
+    sudo RISCV=/opt/riscv ../configure --prefix=$RISCV --host=riscv64-unknown-elf
+    sudo RISCV=/opt/riscv PATH=/opt/riscv/bin:$PATH make
+    sudo RISCV=/opt/riscv PATH=/opt/riscv/bin:$PATH make install
+    ```
+    重新运行`spike pk gcd.riscv`, 即可正常运行。
 
 #### 2. LLVM源码阅读与理解
 
@@ -139,6 +154,7 @@
 - 讨论地点：西图13楼
 - 讨论内容：小组分工及配置环境过程中出现的问题
   - `riscv-gnu-toolchains`下载过程中遇到了`Connection-failed`的问题
+  - 源码阅读的任务分工
 
 ## 实验总结
 
