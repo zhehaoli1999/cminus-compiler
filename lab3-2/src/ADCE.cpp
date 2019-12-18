@@ -270,6 +270,7 @@ void AggressiveDeadCodeElimination::initialize() {
 
       // Return true if \p BB is currently on the active stack
       // of ancestors.
+      // Find BB and tis status if True
       bool onStack(BasicBlock *BB) {
         auto Iter = find(BB);
         return Iter != end() && Iter->second; // Iter->second 是一个bool变量，表示这个block是不是live的
@@ -277,6 +278,7 @@ void AggressiveDeadCodeElimination::initialize() {
     } State;
 
     // TODO 如果有回边，标记为live？
+    // 
     State.reserve(F.size());
     // Iterate over blocks in depth-first pre-order and
     // treat all edges to a block already seen as loop back edges
@@ -299,7 +301,8 @@ void AggressiveDeadCodeElimination::initialize() {
     }
   }
 
-   // TODO 函数总要返回，
+   // TODO ??
+  //  TODO: why should the non travsered nodes' be denoted as live
   // Mark blocks live if there is no path from the block to a
   // return of the function.
   /*
@@ -312,7 +315,8 @@ void AggressiveDeadCodeElimination::initialize() {
   // We do this by seeing which of the postdomtree root children exit the
   // program, and for all others, mark the subtree live.
   for (auto &PDTChild : children<DomTreeNode *>(PDT.getRootNode())) {
-    auto *BB = PDTChild->getBlock(); //
+    // get info of this child
+    auto *BB = PDTChild->getBlock();
     auto &Info = BlockInfo[BB];
     // Real function return //如果是包含return语句的basicblock，不管
     if (isa<ReturnInst>(Info.Terminator)) {
@@ -322,19 +326,23 @@ void AggressiveDeadCodeElimination::initialize() {
     }
 
     // This child is something else, like an infinite loop.
+    // NOTE that it mark the terminator as live INSTEAD of bb
     for (auto DFNode : depth_first(PDTChild))
       markLive(BlockInfo[DFNode->getBlock()].Terminator); //将这个bb的terninator指令标记成live的，这很自然，因为函数总要返回
   }
 
-  // TODO
+  // TODO: 
   // Treat the entry block as always live
   auto *BB = &F.getEntryBlock();
   auto &EntryInfo = BlockInfo[BB];
   EntryInfo.Live = true;
+  // Do not mark the entry's block Cond Br 's Term as LIVE
   if (EntryInfo.UnconditionalBranch)
     markLive(EntryInfo.Terminator);
 
   // Build initial collection of blocks with dead terminators
+  // It assumes that all the other terminator is DEAD at first 
+  //  and removes the live ones
   for (auto &BBInfo : BlockInfo)
     if (!BBInfo.second.terminatorIsLive())  //如果terninator不是活的
       BlocksWithDeadTerminators.insert(BBInfo.second.BB);
@@ -382,6 +390,8 @@ void AggressiveDeadCodeElimination::markLiveInstructions() {
       LLVM_DEBUG(dbgs() << "work live: "; LiveInst->dump(););
 
       //TODO 标记指令为live
+      // mark the definition instr of the referred operands as Live
+      // Since it has been proved to be referred
       for (Use &OI : LiveInst->operands())
         if (Instruction *Inst = dyn_cast<Instruction>(OI))
           markLive(Inst);
@@ -506,7 +516,9 @@ void AggressiveDeadCodeElimination::markLiveBranchesFromControlDependences() {
 
   SmallVector<BasicBlock *, 32> IDFBlocks;
   ReverseIDFCalculator IDFs(PDT);
+  // Give the IDF calculator the set of blocks in which the value is defined. This is equivalent to the set of starting blocks it should be calculating the IDF for (though later gets pruned based on liveness).
   IDFs.setDefiningBlocks(NewLiveBlocks);
+
   IDFs.setLiveInBlocks(BlocksWithDeadTerminators);
   IDFs.calculate(IDFBlocks);
   NewLiveBlocks.clear();
@@ -607,6 +619,8 @@ void AggressiveDeadCodeElimination::updateDeadRegions() {
     // Add an unconditional branch to the successor closest to the
     // end of the function which insures a path to the exit for each
     // live edge.
+    // PreferredSucc is the successor closest to the end of the function
+    // "the closest" is the one with the largest postorder
     BlockInfoType *PreferredSucc = nullptr;
     for (auto *Succ : successors(BB)) {
       auto *Info = &BlockInfo[Succ];
@@ -617,15 +631,22 @@ void AggressiveDeadCodeElimination::updateDeadRegions() {
            "Failed to find safe successor for dead branch");
 
     // Collect removed successors to update the (Post)DominatorTrees.
+    // Remove all bb except preferredSucc 
     SmallPtrSet<BasicBlock *, 4> RemovedSuccessors;
     bool First = true;
+    // First isn't removed
     for (auto *Succ : successors(BB)) {
+      // The first one is the BB's terminator
       if (!First || Succ != PreferredSucc->BB) {
+        // This is actually not used to update the Predecessor list, but is actually
+        // used to update the PHI nodes that reside in the block. Note that this
+        // should be called while the predecessor still refers to this block.
         Succ->removePredecessor(BB);
         RemovedSuccessors.insert(Succ);
       } else
         First = false;
     }
+    // BB -> PreferredSucc->BB
     makeUnconditional(BB, PreferredSucc->BB);
 
     // Inform the dominators about the deleted CFG edges.
@@ -675,11 +696,15 @@ void AggressiveDeadCodeElimination::makeUnconditional(BasicBlock *BB,
     collectLiveScopes(*DL);
 
   // Just mark live an existing unconditional branch
+  // If the current Term is already a unconditional branch just point it to the target
   if (isUnconditionalBranch(PredTerm)) {
     PredTerm->setSuccessor(0, Target);
     InstInfo[PredTerm].Live = true;
     return;
   }
+
+  // predTerm is not Uncondbr
+  // Then we need to create a new unconditional br and remove the old one
   LLVM_DEBUG(dbgs() << "making unconditional " << BB->getName() << '\n');
   NumBranchesRemoved += 1;
   IRBuilder<> Builder(PredTerm);
