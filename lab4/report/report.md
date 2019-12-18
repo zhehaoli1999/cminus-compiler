@@ -132,7 +132,14 @@
 
   * *allocateInstruction* 函数有几次扫描过程以及每一次扫描的功能？
 
-    答：......
+    答：4次。
+    
+    第一次：记录哪些virtual register被使用，修改它们的use状态\
+    第二次：为被使用的virtual register分配physical register\
+    第三次：修改已经分配空间的virtual register对应的physical register的use状态\
+    第四次：为被定义了的virtual register分配空间，并检测是否有dead def出现，即冗余的寄存器定义。\
+    最后：删除所有dead def。
+    
 
   * *calcSpillCost* 函数的执行流程？
 
@@ -166,7 +173,32 @@
         
         此外需要对于指令I': x = y，getReg先选择Ry,再令Rx = Ry
         
-
+    
+    2. RegAllocFast.cpp总结
+        1. 一些关键概念
+        + **寄存器别名（alias）**
+        
+            别名顾名思义是对物理寄存器在逻辑层面的一种抽象，一个物理寄存器可能有多个别名r1,rA，RegA等。
+        + **Physical Register的3种状态**
+        
+            （1）disable： 当前寄存器不可以用于分配，因为这个寄存器的某个别名正在被使用。\
+            （2）free：当前寄存器空闲，可用。\
+            （3）reserved：当前寄存器已经被占用了，不用用于分配。
+            
+        + **virtual register**
+            virtual register与physical register 的alias的关系？可能是一回事。
+            RegAllocFast是针对vitrual register进行分配，最后将virtual register映射到physical registers。
+            * virtual register的几种状态\
+                （1）undef：virtual register中的value没有定义\
+                （2）early clobbered：（“clobber”：可以理解成overwrite，覆盖）定义已经在use之前\
+                （3）tied：值def和use必须使用同一个寄存器\
+                 (4) kill: 最后一次使用，用后即杀死的寄存器\
+                （5）dead：已经不使用的virtual register定义
+        + **spill**\
+            指从寄存器将值写回内存。
+                
+        2. RegAllocFast工作过程总结（200字以内）
+            
   ......
 
 
