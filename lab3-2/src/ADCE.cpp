@@ -222,7 +222,7 @@ void AggressiveDeadCodeElimination::initialize() {
   BlockInfo.reserve(NumBlocks);
   size_t NumInsts = 0;
 
-  // Iterate over blocks and initialize BlockInfoVec entries, count
+  // Iterate over blocks and initiali66ze BlockInfoVec entries, count
   // instructions to size the InstInfo hash table.
   for (auto &BB : F) {
     NumInsts += BB.size();
@@ -243,11 +243,11 @@ void AggressiveDeadCodeElimination::initialize() {
   for (auto &BBInfo : BlockInfo)
     BBInfo.second.TerminatorLiveInfo = &InstInfo[BBInfo.second.Terminator];
 
-  // TODO 什么是“root” instrcution? -> isAlwaysLive()
+  // TODO 什么是“root” instrcution? -> isAlwaysLive的instruction
   // Collect the set of "root" instructions that are known live.
   for (Instruction &I : instructions(F))
     if (isAlwaysLive(I))
-      markLive(&I);
+      markLive(&I); // 如果这个指令是always live的，那么就将这个指令所在的basicblock标记成live
 
   if (!RemoveControlFlowFlag)
     return;
@@ -272,8 +272,8 @@ void AggressiveDeadCodeElimination::initialize() {
       // of ancestors.
       bool onStack(BasicBlock *BB) {
         auto Iter = find(BB);
-        return Iter != end() && Iter->second;
-      }
+        return Iter != end() && Iter->second; // Iter->second 是一个bool变量，表示这个block是不是live的
+      } 
     } State;
 
     // TODO 如果有回边，标记为live？
@@ -283,9 +283,13 @@ void AggressiveDeadCodeElimination::initialize() {
     // and mark the branch live it if there is a back edge.
     for (auto *BB: depth_first_ext(&F.getEntryBlock(), State)) {
       Instruction *Term = BB->getTerminator();
-      if (isLive(Term))
+      if (isLive(Term)) // 若 terminator指令是live的
         continue;
 
+      // 只有当当前basic block的terminator不是live的时候：
+      // 如果当前basic block的后继节点onState，即还是活跃的时候（on the "stack" of active ancestors），就将当前basic block的terminator标记成live
+      //
+      // 总结：判断terminator是不是活的
       for (auto *Succ : successors(BB))
         if (State.onStack(Succ)) {
           // back edge....
@@ -295,15 +299,22 @@ void AggressiveDeadCodeElimination::initialize() {
     }
   }
 
-   // TODO ??
+   // TODO 函数总要返回，
   // Mark blocks live if there is no path from the block to a
   // return of the function.
+  /*
+  {
+     ... 
+     return 0;
+     a  =1 ;
+  }
+  */
   // We do this by seeing which of the postdomtree root children exit the
   // program, and for all others, mark the subtree live.
   for (auto &PDTChild : children<DomTreeNode *>(PDT.getRootNode())) {
-    auto *BB = PDTChild->getBlock();
+    auto *BB = PDTChild->getBlock(); //
     auto &Info = BlockInfo[BB];
-    // Real function return
+    // Real function return //如果是包含return语句的basicblock，不管
     if (isa<ReturnInst>(Info.Terminator)) {
       LLVM_DEBUG(dbgs() << "post-dom root child is a return: " << BB->getName()
                         << '\n';);
@@ -312,7 +323,7 @@ void AggressiveDeadCodeElimination::initialize() {
 
     // This child is something else, like an infinite loop.
     for (auto DFNode : depth_first(PDTChild))
-      markLive(BlockInfo[DFNode->getBlock()].Terminator);
+      markLive(BlockInfo[DFNode->getBlock()].Terminator); //将这个bb的terninator指令标记成live的，这很自然，因为函数总要返回
   }
 
   // TODO
@@ -325,7 +336,7 @@ void AggressiveDeadCodeElimination::initialize() {
 
   // Build initial collection of blocks with dead terminators
   for (auto &BBInfo : BlockInfo)
-    if (!BBInfo.second.terminatorIsLive())
+    if (!BBInfo.second.terminatorIsLive())  //如果terninator不是活的
       BlocksWithDeadTerminators.insert(BBInfo.second.BB);
 }
 
