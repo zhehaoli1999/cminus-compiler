@@ -143,7 +143,7 @@
     执行细节如下：
     + 若该operand是一个虚拟寄存器：判断其是被定义还是被使用，
         * 若是被使用，再进一步判断其是否是tied状态。
-        * 若是被定义，判断其是否是early-clobber状态，以及是否有partial-define的情况出现。（early-clobber指该operand（比如计算结果）如果与输入数据共享寄存器，可能被后续输入覆盖，）
+        * 若是被定义，判断其是否是early-clobber状态，以及是否有partial-define的情况出现。（early-clobber指该operand（比如计算结果）如果与输入数据共享寄存器，可能被后续输入覆盖。）
     + 若该operand是一个物理寄存器：先判断该物理寄存器是否可以被分配给后续的虚拟寄存器，即该operand寄存器中存的值在该指令结束后可以被丢弃，如立即数。\
     如果不能被分配，再判断其是被定义还是被使用，
         * 若是被使用，如果该物理寄存器没有对应其他的虚拟寄存器，将该物理寄存器设置成free状态。
@@ -175,7 +175,10 @@
 
   * *hasTiedOps*，*hasPartialRedefs，hasEarlyClobbers* 变量的作用？
 
-    答：hasTiedOps: 寄存器的Tied状态指
+    答：hasTiedOps：寄存器的Tied状态指def和use必须使用同一个寄存器。hasTiedOps用于在寄存器分配时对寄存器的分配增加限制。
+    hasEarlyClobber：如前所述，early-clobber指该operand（比如计算结果）如果与输入数据共享寄存器，可能被后续输入覆盖。因此hasEarlyClobber的作用同样是对寄存器的分配增加限制，阻止该operand共享输入寄存器。
+    hasPartialRedefs：指某个寄存器的sub寄存器被定义，那么就会出现partial defined的情况。hasPartialRedefs的作用是指示何时需要调用handleThroughOperands函数对partial defined情况进行相关处理。
+
 
 - 书上所讲的算法与LLVM源码中的实现之间的不同点
     1. 龙书给出的getReg函数总结\
