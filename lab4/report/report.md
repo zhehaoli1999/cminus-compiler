@@ -1,12 +1,14 @@
 # lab4实验报告
 
 组长：杨舒静 PB17151774
+
 袁旷 PB17081543
 李喆昊 PB17050941
 
 ## 实验要求
 1. 学习配置RISC-V环境，学习利用RISC-V进行机器代码的生成和运行
-// TODO:
+2. 阅读 LLVM 源码中的 `RegAllocFast.cpp` 代码段，理解 LLVM 选择并分配寄存器的原理及流程，并分析总结该算法与龙书算法的不同点。
+
 ## 报告内容 
 
 #### 1. RISC-V 机器代码的生成和运行
@@ -124,11 +126,14 @@
 
 #### 2. LLVM源码阅读与理解
 
-- RegAllocFast.cpp 中的几个问题
+##### RegAllocFast.cpp 中的几个问题
 
-  *RegAllocFast* 函数的执行流程？
+   * *RegAllocFast* 函数的执行流程？
+    
 
-    答：1. 获取当前 `MachineFunction` 的相关信息，并初始化在分析中所需的 `RegClassInfo` ,`UsedInInstr`等成员变量。
+    答： 
+    
+    1. 获取当前 `MachineFunction` 的相关信息，并初始化在分析中所需的 `RegClassInfo` ,`UsedInInstr`等成员变量。
     
     2. *RegAllocFast* 的执行目标是得到一个从虚拟寄存器到物理寄存器的映射，故初始化一个 map，并将所有虚拟寄存器映射到 null。
     
@@ -137,6 +142,8 @@
     4. 在每个基本块分析结束时，首先分析各个虚拟寄存器是否存活（`VirtDead`），将存活的虚拟寄存器所对应的物理寄存器 *spill*。然后将可以被合并的指令从基本块中删除（ `Coalesced` ）。采用这种顺序的原因是，这些可以被合并的指令中可能包含存活的虚拟寄存器，所以删除操作要放在最后。
     
     5. 在所有基本块的分析结束后，清空所有虚拟寄存器。
+    
+    
 
   * *allocateInstruction* 函数有几次扫描过程以及每一次扫描的功能？
 
@@ -200,10 +207,12 @@
     + hasPartialRedefs：指某个寄存器的sub寄存器被定义，那么就会出现partial defined的情况。hasPartialRedefs的作用是指示何时需要调用handleThroughOperands函数对partial defined情况进行相关处理。
 
 
-- 书上所讲的算法与LLVM源码中的实现之间的不同点
+##### 书上所讲的算法与LLVM源码中的实现之间的不同点
+    
     
     下面总结这两者对候选寄存器 *spill* 的代价计算（即对应`calcSpillCost`函数）的区别：
 
+    
     1. 龙书中将此代价定义为“将候选寄存器 R 选定为目标寄存器需要额外生成的 *store* 指令的数目”，具体计算方法如下：
     
          (1) R的得分初始化为0\
