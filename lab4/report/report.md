@@ -29,6 +29,7 @@
   - riscv-pk: which contains bbl, a boot loader for Linux and similar OS kernels, and pk, a proxy kernel that services system calls for a target-machine application by forwarding them to the host machine
   
   编译完后，应当注意大部分可以执行文件都会安装到$RISCV/bin目录，但pk的默认没有安装(解决方案在**Trouble Shooting**中详述)。
+  
   **Step 2**: 安装`riscv-gnu-toolchains`(此部分中由于网速问题利用了@ibug提供的镜像)
   ```bash
   git clone --recursive https://github.com/riscv/riscv-gnu-toolchain
@@ -189,7 +190,7 @@
     
     3. 如果寄存器已经被分配给了一个虚拟寄存器，那么检查该虚拟寄存器是否 *Dirty* (即是否需要*spill*)，若是，那么返回`spillDirty`（代价为100），若否，返回`spillClean` (代价为50)。
     
-    4. 如果寄存器处于 *disabled* 状态，表明该寄存器的别名可能正在被使用。于是忽略当前 *disabled* 状态的寄存器，遍历该寄存器的所有别名，重复 1-3 中的判断，将所有代价累加后返回。在别名寄存器的代价计算中，*free* 状态对应的代价为 1，而不是 0。\
+    4. 如果寄存器处于 *disabled* 状态，表明该寄存器的别名可能正在被使用。于是忽略当前 *disabled* 状态的寄存器，遍历该寄存器的所有别名，重复 1-3 中的判断，将所有代价累加后返回。在别名寄存器的代价计算中，*free* 状态对应的代价为 1，而不是 0。
     
     PS: 对 3 中`spillClean` 的代价不为 0 的解释：如果虚拟寄存器不为 *Dirty*，虽然不需要 *spill* 但是仍需要杀死当前虚拟寄存器，有运算开销，故设定代价为 50。
     
