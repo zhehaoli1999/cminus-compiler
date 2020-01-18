@@ -1018,6 +1018,7 @@ void RegAllocFast::allocateInstruction(MachineInstr &MI) {
   unsigned CopyDstReg = 0;
   unsigned CopySrcSub = 0;
   unsigned CopyDstSub = 0;
+
   if (MI.isCopy()) {
     CopyDstReg = MI.getOperand(0).getReg();
     CopySrcReg = MI.getOperand(1).getReg();
@@ -1045,26 +1046,34 @@ void RegAllocFast::allocateInstruction(MachineInstr &MI) {
       MRI->addPhysRegsUsedFromRegMask(MO.getRegMask());
       continue;
     }
+
     if (!MO.isReg()) continue;
     Register Reg = MO.getReg();
+    
     if (!Reg) continue;
-    if (Register::isVirtualRegister(Reg)) {
-      VirtOpEnd = i+1;
-      if (MO.isUse()) {
-        hasTiedOps = hasTiedOps ||
-                            MCID.getOperandConstraint(i, MCOI::TIED_TO) != -1;
-      } else {
-        if (MO.isEarlyClobber())
-          hasEarlyClobbers = true;
-        if (MO.getSubReg() && MI.readsVirtualRegister(Reg))
-          hasPartialRedefs = true;
-      }
-      continue;
+
+    if (Register::isVirtualRegister(Reg)) { //判断指令所用的寄存器是虚拟寄存器还是物理寄存器
+    //是虚拟寄存器
+        VirtOpEnd = i+1;
+
+        if (MO.isUse()) {  
+          hasTiedOps = hasTiedOps ||
+                              MCID.getOperandConstraint(i, MCOI::TIED_TO) != -1;
+        } else {
+          if (MO.isEarlyClobber())
+            hasEarlyClobbers = true; //？
+          if (MO.getSubReg() && MI.readsVirtualRegister(Reg))
+            hasPartialRedefs = true; //？
+        }
+        continue;
     }
+
+    //是物理寄存器
     if (!MRI->isAllocatable(Reg)) continue;
     if (MO.isUse()) {
       usePhysReg(MO);
-    } else if (MO.isEarlyClobber()) {
+
+    } else if (MO.isEarlyClobber()) { //？
       // 修改ＰhysＲeg的状态
       definePhysReg(MI, Reg,
                     (MO.isImplicit() || MO.isDead()) ? regFree : regReserved);
@@ -1110,6 +1119,8 @@ void RegAllocFast::allocateInstruction(MachineInstr &MI) {
 
       // Populate MayLiveAcrossBlocks in case the use block is allocated before
       // the def block (removing the vreg uses).
+      
+      // 如果这个virtual reg是定义，那么为之分配物理寄存器
       mayLiveIn(Reg);
 
       LiveReg &LR = reloadVirtReg(MI, I, Reg, CopyDstReg);
@@ -1123,6 +1134,7 @@ void RegAllocFast::allocateInstruction(MachineInstr &MI) {
   // Allocate undef operands. This is a separate step because in a situation
   // like  ` = OP undef %X, %X`    both operands need the same register assign
   // so we should perform the normal assignment first.
+//第二次看到之前undef的寄存器,就分配一个寄存器
   if (HasUndefUse) {
     for (MachineOperand &MO : MI.uses()) {
       if (!MO.isReg() || !MO.isUse())
@@ -1279,7 +1291,7 @@ void RegAllocFast::allocateBasicBlock(MachineBasicBlock &MBB) {
 
     allocateInstruction(MI);
   }
-
+  // ? 活跃变量？
   // Spill all physical registers holding virtual registers now.
   LLVM_DEBUG(dbgs() << "Spilling live registers at end of block.\n");
   spillAll(MBB.getFirstTerminator(), /*OnlyLiveOut*/ true);
