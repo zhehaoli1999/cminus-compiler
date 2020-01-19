@@ -7,12 +7,7 @@ using namespace llvm;
 
 #define LOAD(type, ret) builder.CreateLoad(type, ret, "tmp");
 
-// You can define global variables here
-// to store state
 Value * ret;
-// Type * retType;
-// bool isParam = 0;
-// bool isAssign = 0;
 
 //store function for creating basic block
 Function * currentFunc;
@@ -44,14 +39,11 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
     // But in var declarasiton, it should declare a array with its len
     if(!scope.in_global()){
         if(node.num){
-        // TODO: local array
-
+            //  local array
             // 创建ArrayType用于分配数组的空间
             ArrayType* arrayType = ArrayType::get(TYPE32, node.num->value);
             auto lArrayAlloc = builder.CreateAlloca(arrayType); 
             scope.push(node.id,lArrayAlloc);
-            // 存储数组长度：
-            scope.push(node.id+"_len",CONST(node.num->value));
         } 
         else{
             auto ldAlloc = builder.CreateAlloca(TYPE32);
@@ -65,14 +57,12 @@ void CminusBuilder::visit(syntax_var_declaration &node) {
             
             // gArrayAlloc->setInitializer(zeroNum);
             scope.push(node.id, gArrayAlloc);
-            // scope.push(node.id+"_len", CONST(node.num->value));
         }
         else {
             // declarations without initialization value and name
             // TODO: Global variable declaration failed
             ConstantAggregateZero* zeroNum = ConstantAggregateZero::get(TYPE32);
-            auto gdAlloc = new GlobalVariable(*module,TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage, zeroNum);
-            
+            auto gdAlloc = new GlobalVariable(*module,TYPE32, false, GlobalVariable::LinkageTypes::ExternalLinkage, zeroNum);            
             
             // gdAlloc->setAlignment(0);
             //gdAlloc->setInitializer(zeroArray);
@@ -183,6 +173,7 @@ void CminusBuilder::visit(syntax_param &node) {
 void CminusBuilder::visit(syntax_compound_stmt &node) {
     // accept local declarations
     // accept statementlist
+    scope.enter();
     if(node.local_declarations.size() > 0){
         for(auto ld : node.local_declarations){
         // assert ld.type is INT
@@ -193,6 +184,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
     for(auto s : node.statement_list){
         s->accept(*this);
     }  
+    scope.exit();
 }
 
 void CminusBuilder::visit(syntax_expresion_stmt &node) {
@@ -211,18 +203,15 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
     
     // !
-    // !
     if(ret->getType() == TYPEARRAY_32){
         ret = builder.CreateLoad(ret);
     }
-    // !
     // !
 
     if(ret->getType() == TYPE32){
         ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
     }
     
-
     if(node.else_statement != nullptr){
         auto trueBranch = BasicBlock::Create(context, "trueBranch", currentFunc);
         auto falseBranch = BasicBlock::Create(context, "falseBranch", currentFunc);
@@ -280,6 +269,11 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
     builder.SetInsertPoint(loopJudge);
     node.expression->accept(*this);
     if(ret->getType() == TYPE32){
+        // ret = builder.CreateIntCast(ret, Type::getInt1Ty(context), false);
+        ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
+    }
+    if(ret->getType() == Type::getInt32PtrTy(context)){
+        ret = builder.CreateLoad(TYPE32,ret);
         ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
     }
     builder.CreateCondBr(ret, loopBody, out);
