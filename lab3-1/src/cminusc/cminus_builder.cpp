@@ -5,8 +5,6 @@ using namespace llvm;
 #define CONST(num) \
   ConstantInt::get(context, APInt(32, num))  //得到常数值的表示,方便后面多次用到
 
-#define LOAD(type, ret) builder.CreateLoad(type, ret, "tmp");
-
 Value * ret;
 
 //store function for creating basic block
@@ -173,6 +171,7 @@ void CminusBuilder::visit(syntax_param &node) {
 void CminusBuilder::visit(syntax_compound_stmt &node) {
     // accept local declarations
     // accept statementlist
+    // {} 需要进入scope
     scope.enter();
     if(node.local_declarations.size() > 0){
         for(auto ld : node.local_declarations){
@@ -184,6 +183,7 @@ void CminusBuilder::visit(syntax_compound_stmt &node) {
     for(auto s : node.statement_list){
         s->accept(*this);
     }  
+    // 结束时记得退出scope
     scope.exit();
 }
 
@@ -203,6 +203,7 @@ void CminusBuilder::visit(syntax_selection_stmt &node) {
     Type* TYPEARRAY_32 = PointerType::getInt32PtrTy(context);
     
     // !
+    // 如果ret的类型是int32*，需要load让其变为int32
     if(ret->getType() == TYPEARRAY_32){
         ret = builder.CreateLoad(ret);
     }
@@ -272,6 +273,7 @@ void CminusBuilder::visit(syntax_iteration_stmt &node) {
         // ret = builder.CreateIntCast(ret, Type::getInt1Ty(context), false);
         ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
     }
+    // 如果ret的类型是int32*，需要load让其变为int32
     if(ret->getType() == Type::getInt32PtrTy(context)){
         ret = builder.CreateLoad(TYPE32,ret);
         ret = builder.CreateICmpNE(ret, ConstantInt::get(TYPE32, 0, true));
@@ -407,6 +409,7 @@ void CminusBuilder::visit(syntax_simple_expression &node) {
         else rValue = ret;
 
         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // 将int1类型转换为int32类型
         Type* TYPE1 = Type::getInt1Ty(context);
         if (lValue->getType() == TYPE1){
             lValue = builder.CreateIntCast(lValue, Type::getInt32Ty(context), false);
